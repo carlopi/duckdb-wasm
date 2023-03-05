@@ -153,6 +153,7 @@ include("${CMAKE_SOURCE_DIR}/cmake/gflags.cmake")
 include("${CMAKE_SOURCE_DIR}/cmake/googletest.cmake")
 include("${CMAKE_SOURCE_DIR}/cmake/rapidjson.cmake")
 
+
 # ---------------------------------------------------------------------------
 # Code coverage
 
@@ -319,7 +320,7 @@ if(EMSCRIPTEN)
           _duckdb_web_tokenize, \
           _duckdb_web_udf_scalar_create \
       ]' \
-      -s EXPORTED_RUNTIME_METHODS='[\"ccall\"]' \
+      -s EXPORTED_RUNTIME_METHODS='[\"ccall\", \"stackSave\", \"stackAlloc\", \"stackRestore\"]' \
       --js-library=${CMAKE_SOURCE_DIR}/js-stubs.js")
 
 endif()
