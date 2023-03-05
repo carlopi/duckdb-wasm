@@ -34,7 +34,7 @@ function printErr(err) {
 // Wasm plugin
 
 const mode = is_debug ? '--debug' : '--release';
-execSync(`wasm-pack build --target web --out-dir ./pkg --out-name shell ${mode}`, {
+execSync(`/opt/homebrew/bin/wasm-pack build --target web --out-dir ./pkg --out-name shell ${mode}`, {
     cwd: path.join(__dirname, 'crate'),
     stdio: 'inherit',
 });
