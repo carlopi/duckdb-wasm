@@ -165,7 +165,7 @@ export const BROWSER_RUNTIME: DuckDBRuntime & {
 
                         // Supports range requests
                         const contentLength = xhr.getResponseHeader('Content-Length');
-                        if (xhr.status == 206 && contentLength !== null) {
+                        if ((xhr.status == 206 || xhr.status == 200) && contentLength !== null) {
                             const result = mod._malloc(2 * 8);
                             mod.HEAPF64[(result >> 3) + 0] = +contentLength;
                             mod.HEAPF64[(result >> 3) + 1] = 0;
