@@ -180,7 +180,7 @@ export const BROWSER_RUNTIME: DuckDBRuntime & {
 
                     // Try to fallback to full read?
                     if (file.allowFullHttpReads) {
-                        if ((contentLength !== null) && (+contentLength > 1)) {
+                        {
                             // 2. Send a dummy GET range request querying the first byte of the file
                             //          -> good IFF status is 206 and contentLenght2 is 1
                             //          -> otherwise, iff 200 and contentLenght2 == contentLenght
@@ -195,14 +195,27 @@ export const BROWSER_RUNTIME: DuckDBRuntime & {
                             xhr.setRequestHeader('Range', `bytes=0-0`);
                             xhr.send(null);
                             const contentLength2 = xhr.getResponseHeader('Content-Length');
+                            if (contentLength === null) {
+                                try {
+                                    const contentRange = xhr.getResponseHeader('Content-Range');
+                                    if (contentRange !== null) {
+                                        // Courtesy of https://github.com/duckdb/duckdb-wasm/issues/699
+                                        // Idea is that HEAD might fail on certain servers, but IFF there is an accessible
+                                        //     Content-Range header that can be used to determine total length
+                                        contentLength = contentRange?.match(/bytes 0-0\/(\d+)/)?.at(1);
+                                    }
+                                } catch (e: any) {
+                                    console.warn('GET request failed on Content-Range: ${e}');
+                                }
+                            }
 
-                            if (xhr.status == 206 && contentLength2 !== null && +contentLength2 == 1) {
+                            if (xhr.status == 206 && contentLength !== null && contentLength2 !== null && +contentLength2 == 1) {
                                 const result = mod._malloc(2 * 8);
                                 mod.HEAPF64[(result >> 3) + 0] = +contentLength;
                                 mod.HEAPF64[(result >> 3) + 1] = 0;
                                 return result;
                             }
-                            if (xhr.status == 200 && contentLength2 !== null && +contentLength2 == +contentLength) {
+                            if (xhr.status == 200 && contentLength2 !== null) {
                                 console.warn(`fall back to full HTTP read for: ${file.dataUrl}`);
                                 const data = mod._malloc(xhr.response.byteLength);
                                 const src = new Uint8Array(xhr.response, 0, xhr.response.byteLength);
