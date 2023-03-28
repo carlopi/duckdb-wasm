@@ -1029,6 +1029,11 @@ impl Shell {
     }
 
     fn write_connection_ready(&self) {
+        self.write(&format!("{bold}WARNING{normal}: This is a test deployment.{endl}         Feedback is welcome at https://github.com/duckdb/duckdb-wasm/issues/1202.{endl}{endl}Stable duckdb-wasm shell is at https://shell.duckdb.org{endl}{endl}",
+            bold = vt100::MODE_BOLD,
+            normal = vt100::MODES_OFF,
+            endl = vt100::CRLF,
+        ));
         self.write(&format!("Connected to a {bold}{mode} database{normal}{url}.{endl}Enter {bold}.help{normal} for usage hints.{endl}{endl}",
             bold = vt100::MODE_BOLD,
             normal = vt100::MODES_OFF,
