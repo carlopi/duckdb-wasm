@@ -40,7 +40,7 @@
     }
      .submenu {
          display: grid;
-         grid-template-rows: 8px 48px 48px auto 48px 48px 8px;
+         grid-template-rows: 8px 1px 24px 1px 24px 1px auto 48px 48px 8px;
          grid-template-columns: 100%;
     }
 }
@@ -93,6 +93,12 @@
      display: grid;
      justify-content: center;
      align-items: center;
+}
+ .text {
+     align-items: center;
+}
+ .border {
+     background-color: grey;
 }
  .submenu_item:hover, .ducklogo:hover {
      background-color: var(--nav_tab_bg_active);
