@@ -257,6 +257,10 @@ target_link_libraries(duckdb_web_json duckdb duckdb_json)
 
 set(EMSCRIPTEN_STD_EXPORTED_FUNCS '["ccall"]')
 
+if(DUCKDUB_WASM_LOADABLE_EXTENSIONS)
+  set(EMSCRIPTEN_STD_EXPORTED_FUNCS '[\"ccall\", \"stackSave\", \"stackAlloc\", \"stackRestore\"]')
+endif()
+
 # We need "-s WARN_ON_UNDEFINED_SYMBOLS=0" to instantiate the module with our
 # own imports.
 if(EMSCRIPTEN)
