@@ -255,6 +255,8 @@ target_link_libraries(duckdb_web_json duckdb duckdb_json)
 # ---------------------------------------------------------------------------
 # Emscripten
 
+set(EMSCRIPTEN_STD_EXPORTED_FUNCS '["ccall"]')
+
 # We need "-s WARN_ON_UNDEFINED_SYMBOLS=0" to instantiate the module with our
 # own imports.
 if(EMSCRIPTEN)
@@ -318,7 +320,7 @@ if(EMSCRIPTEN)
           _duckdb_web_tokenize, \
           _duckdb_web_udf_scalar_create \
       ]' \
-      -s EXPORTED_RUNTIME_METHODS='[\"ccall\"]' \
+      -s EXPORTED_RUNTIME_METHODS=${EMSCRIPTEN_STD_EXPORTED_FUNCS} \
       --js-library=${CMAKE_SOURCE_DIR}/js-stubs.js")
 
 endif()
