@@ -378,6 +378,8 @@ jobs:
                   submodules: 'recursive'
                   fetch-depth: 0
 
+            - uses: mymindstorm/setup-emsdk@v12
+
             - name: Git submodule status
               run: |
                   git submodule status > git_submodule_status.txt
@@ -393,25 +395,11 @@ jobs:
                       ${{ runner.os }}-wasm6-default-${{ hashFiles('git_submodule_status.txt') }}
                       ${{ runner.os }}-wasm6-default-
 
-            - name: Prepare repository
-              run: |
-                  chown -R $(id -u):$(id -g) $PWD
-                  (cd ./submodules/duckdb && git fetch --all --tags)
-
-            - name: Prepare environment
-              uses: duckdb/duckdb-wasm-ci-env@v0.11
-              with:
-                  script: |-
-                      ccache --max-size 300M
-                      ccache -s
-
             - name: Build WASM module
               uses: duckdb/duckdb-wasm-ci-env@v0.11
               with:
                   script: |-
-                      ccache -z
                       ./scripts/wasm_build_lib.sh relperf mvp
-                      ccache -s
 
             - name: Upload artifact
               uses: actions/upload-artifact@v3
@@ -434,6 +422,8 @@ jobs:
                   submodules: 'recursive'
                   fetch-depth: 0
 
+            - uses: mymindstorm/setup-emsdk@v12
+
             - name: Git submodule status
               run: |
                   git submodule status > git_submodule_status.txt
@@ -449,25 +439,11 @@ jobs:
                       ${{ runner.os }}-wasm6-eh-${{ hashFiles('git_submodule_status.txt') }}
                       ${{ runner.os }}-wasm6-eh-
 
-            - name: Prepare repository
-              run: |
-                  chown -R $(id -u):$(id -g) $PWD
-                  (cd ./submodules/duckdb && git fetch --all --tags)
-
-            - name: Prepare environment
-              uses: duckdb/duckdb-wasm-ci-env@v0.11
-              with:
-                  script: |-
-                      ccache --max-size 300M
-                      ccache -s
-
             - name: Build WASM module
               uses: duckdb/duckdb-wasm-ci-env@v0.11
               with:
                   script: |-
-                      ccache -z
                       ./scripts/wasm_build_lib.sh relperf eh
-                      ccache -s
 
             - name: Upload artifact
               uses: actions/upload-artifact@v3
@@ -490,6 +466,8 @@ jobs:
                   submodules: 'recursive'
                   fetch-depth: 0
 
+            - uses: mymindstorm/setup-emsdk@v12
+
             - name: Git submodule status
               run: |
                   git submodule status > git_submodule_status.txt
@@ -505,25 +483,11 @@ jobs:
                       ${{ runner.os }}-wasm6-coi-${{ hashFiles('git_submodule_status.txt') }}
                       ${{ runner.os }}-wasm6-coi-
 
-            - name: Prepare repository
-              run: |
-                  chown -R $(id -u):$(id -g) $PWD
-                  (cd ./submodules/duckdb && git fetch --all --tags)
-
-            - name: Prepare environment
-              uses: duckdb/duckdb-wasm-ci-env@v0.11
-              with:
-                  script: |-
-                      ccache --max-size 300M
-                      ccache -s
-
             - name: Build WASM module
               uses: duckdb/duckdb-wasm-ci-env@v0.11
               with:
                   script: |-
-                      ccache -z
                       ./scripts/wasm_build_lib.sh relperf coi
-                      ccache -s
 
             - name: Upload artifact
               uses: actions/upload-artifact@v3
