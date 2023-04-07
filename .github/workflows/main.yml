@@ -396,10 +396,8 @@ jobs:
                       ${{ runner.os }}-wasm6-default-
 
             - name: Build WASM module
-              uses: duckdb/duckdb-wasm-ci-env@v0.11
-              with:
-                  script: |-
-                      ./scripts/wasm_build_lib.sh relperf mvp
+              run: |
+                  ./scripts/wasm_build_lib.sh relperf mvp
 
             - name: Upload artifact
               uses: actions/upload-artifact@v3
@@ -440,10 +438,8 @@ jobs:
                       ${{ runner.os }}-wasm6-eh-
 
             - name: Build WASM module
-              uses: duckdb/duckdb-wasm-ci-env@v0.11
-              with:
-                  script: |-
-                      ./scripts/wasm_build_lib.sh relperf eh
+              run: |
+                  ./scripts/wasm_build_lib.sh relperf eh
 
             - name: Upload artifact
               uses: actions/upload-artifact@v3
@@ -483,11 +479,10 @@ jobs:
                       ${{ runner.os }}-wasm6-coi-${{ hashFiles('git_submodule_status.txt') }}
                       ${{ runner.os }}-wasm6-coi-
 
+
             - name: Build WASM module
-              uses: duckdb/duckdb-wasm-ci-env@v0.11
-              with:
-                  script: |-
-                      ./scripts/wasm_build_lib.sh relperf coi
+              run: |
+                  ./scripts/wasm_build_lib.sh relperf coi
 
             - name: Upload artifact
               uses: actions/upload-artifact@v3
