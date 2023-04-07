@@ -380,6 +380,11 @@ jobs:
 
             - uses: mymindstorm/setup-emsdk@v12
 
+            - name: Setup Ccache
+              uses: hendrikmuhs/ccache-action@main
+              with:
+                key: ${{ github.job }}
+
             - name: Git submodule status
               run: |
                   git submodule status > git_submodule_status.txt
@@ -411,6 +416,11 @@ jobs:
 
             - uses: mymindstorm/setup-emsdk@v12
 
+            - name: Setup Ccache
+              uses: hendrikmuhs/ccache-action@main
+              with:
+                key: ${{ github.job }}
+
             - name: Git submodule status
               run: |
                   git submodule status > git_submodule_status.txt
@@ -441,6 +451,11 @@ jobs:
                   fetch-depth: 0
 
             - uses: mymindstorm/setup-emsdk@v12
+
+            - name: Setup Ccache
+              uses: hendrikmuhs/ccache-action@main
+              with:
+                key: ${{ github.job }}
 
             - name: Git submodule status
               run: |
