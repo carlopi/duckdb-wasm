@@ -28,7 +28,7 @@ export function arrowToSQLType(type: arrow.DataType): SQLType {
         case arrow.Type.Bool:
             return { sqlType: 'bool' };
         case arrow.Type.Date:
-            return { sqlType: 'date' };
+            return { sqlType: 'date64[ms]' };
         case arrow.Type.DateDay:
             return { sqlType: 'date32[d]' };
         case arrow.Type.DateMillisecond:
