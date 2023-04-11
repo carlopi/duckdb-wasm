@@ -270,6 +270,12 @@ wasm_relsize: wasm_setup
 	${EXEC_ENVIRONMENT} ${ROOT_DIR}/scripts/wasm_build_lib.sh relsize eh
 	${EXEC_ENVIRONMENT} ${ROOT_DIR}/scripts/wasm_build_lib.sh relsize coi
 
+.PHONY: wasm_loadable
+wasm_loadable: wasm_setup
+	WASM_LOADABLE_EXTENSIONS=1 ${ROOT_DIR}/scripts/wasm_build_lib.sh relsize mvp
+	WASM_LOADABLE_EXTENSIONS=1 ${ROOT_DIR}/scripts/wasm_build_lib.sh relsize eh
+	WASM_LOADABLE_EXTENSIONS=1 ${ROOT_DIR}/scripts/wasm_build_lib.sh relsize coi
+
 .PHONY: wasm_debug
 wasm_debug: wasm_setup
 	${EXEC_ENVIRONMENT} ${ROOT_DIR}/scripts/wasm_build_lib.sh debug mvp

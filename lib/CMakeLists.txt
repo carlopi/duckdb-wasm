@@ -9,7 +9,7 @@ cmake_minimum_required(VERSION 3.10)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_CXX_FLAGS -std=c++17)
+set(CMAKE_CXX_FLAGS "-std=c++17 -fPIC ")
 
 if(NOT EMSCRIPTEN)
   set(CMAKE_CXX_FLAGS_DEBUG
@@ -215,42 +215,11 @@ add_library(
   ${CMAKE_SOURCE_DIR}/src/webdb.cc
   ${CMAKE_SOURCE_DIR}/src/webdb_api.cc)
 
-add_library(
-  duckdb_web_fts
-  ${CMAKE_SOURCE_DIR}/src/extensions/fts_extension.cc)
-
-add_library(
-  duckdb_web_parquet
-  ${CMAKE_SOURCE_DIR}/src/extensions/parquet_extension.cc)
-
-add_library(
-  duckdb_web_excel
-  ${CMAKE_SOURCE_DIR}/src/extensions/excel_extension.cc)
-  
-add_library(
-  duckdb_web_json
-  ${CMAKE_SOURCE_DIR}/src/extensions/json_extension.cc)
-
 set(EXTENSION_CACHE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../.ccache/extension")
 set(EXCEL_EXTENSION_CACHE_FILE "${EXTENSION_CACHE_DIR}/excel")
 set(JSON_EXTENSION_CACHE_FILE "${EXTENSION_CACHE_DIR}/json")
 
-set(DUCKDB_WEB_EXCEL "")
-if(EXISTS "${EXCEL_EXTENSION_CACHE_FILE}")
-  set(DUCKDB_WEB_EXCEL "duckdb_web_excel")
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DDUCKDB_EXCEL_EXTENSION")
-endif()
-set(DUCKDB_WEB_JSON "")
-if(EXISTS "${JSON_EXTENSION_CACHE_FILE}")
-  set(DUCKDB_WEB_JSON "duckdb_web_json")
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DDUCKDB_JSON_EXTENSION")
-endif()
-
-target_link_libraries(duckdb_web duckdb duckdb_web_fts duckdb_web_parquet ${DUCKDB_WEB_EXCEL} ${DUCKDB_WEB_JSON} arrow rapidjson ${THREAD_LIBS})
-target_link_libraries(duckdb_web_fts duckdb duckdb_fts)
-target_link_libraries(duckdb_web_parquet duckdb duckdb_parquet)
-target_link_libraries(duckdb_web_excel duckdb duckdb_excel)
-target_link_libraries(duckdb_web_json duckdb duckdb_json)
+target_link_libraries(duckdb_web duckdb arrow rapidjson ${THREAD_LIBS})
 
 # ---------------------------------------------------------------------------
 # Emscripten
@@ -266,13 +235,14 @@ if(EMSCRIPTEN)
     PROPERTIES
       LINK_FLAGS
       "${WASM_LINK_FLAGS} \
+      -s MAIN_MODULE=1 \
       -s ALLOW_BLOCKING_ON_MAIN_THREAD=1 \
       -s ENVIRONMENT='web,node,worker' \
       -s WARN_ON_UNDEFINED_SYMBOLS=0 \
       -s ALLOW_MEMORY_GROWTH=1 \
       -s MAXIMUM_MEMORY=4GB \
       -s MODULARIZE=1 \
-      -s FILESYSTEM=0 \
+      -s FILESYSTEM=1 \
       -s EXPORT_ES6=1 \
       -s EXPORT_NAME='DuckDB' \
       -s EXPORTED_FUNCTIONS='[ \
@@ -318,7 +288,7 @@ if(EMSCRIPTEN)
           _duckdb_web_tokenize, \
           _duckdb_web_udf_scalar_create \
       ]' \
-      -s EXPORTED_RUNTIME_METHODS='[\"ccall\"]' \
+      -s EXPORTED_RUNTIME_METHODS='[\"ccall\", \"stackSave\", \"stackAlloc\", \"stackRestore\"]' \
       --js-library=${CMAKE_SOURCE_DIR}/js-stubs.js")
 
 endif()
