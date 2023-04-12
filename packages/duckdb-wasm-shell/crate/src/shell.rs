@@ -1006,10 +1006,10 @@ impl Shell {
             ));
 
             s.write(&format!(
-                "Database: {bold}{version}{normal}{endl}Package:  {bold}{package_name}@{package_version}{normal}{endl}{endl}",
+                "Database: {bold}{version}{normal}{endl}{endl}",//Package:  {bold}{package_name}@{package_version}{normal}{endl}{endl}",
                 version = version,
-                package_name = PACKAGE_NAME.as_str(),
-                package_version = PACKAGE_VERSION.as_str(),
+                //package_name = PACKAGE_NAME.as_str(),
+                //package_version = PACKAGE_VERSION.as_str(),
                 bold = vt100::MODE_BOLD,
                 normal = vt100::MODES_OFF,
                 endl = vt100::CRLF
