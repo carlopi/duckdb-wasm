@@ -68,7 +68,7 @@ struct ArrowIPCStreamBufferReader : public arrow::RecordBatchReader {
 
     /// Create arrow array stream wrapper
     static unique::unique_ptr<duckdb::ArrowArrayStreamWrapper> CreateStream(uintptr_t buffer_ptr,
-                                                                         duckdb::ArrowStreamParameters& parameters);
+                                                                            duckdb::ArrowStreamParameters& parameters);
     /// Create arrow array stream wrapper
     static void GetSchema(uintptr_t buffer_ptr, duckdb::ArrowSchemaWrapper& schema);
 };
