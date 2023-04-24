@@ -1,7 +1,11 @@
 name: 'Main'
 on:
     push:
+        branches:
+            - master
     pull_request:
+        branches-ignore:
+            - master
     create:
         tags:
             - v*
