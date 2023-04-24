@@ -1,9 +1,9 @@
 name: 'WIP'
 on:
     push:
-    pull_request:
         branches:
-            - master
+            - wip
+            - WIP
     create:
         tags:
             - v*
@@ -245,7 +245,7 @@ jobs:
                           -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
                           -DCMAKE_CXX_COMPILER=clang++ \
                           -DCMAKE_BUILD_TYPE=Debug \
-                          -DDUCKDUB_WASM_LOADABLE_EXTENSIONS=1
+                          -DDUCKDB_WASM_LOADABLE_EXTENSIONS=1
                       ccache -z
                       make -C./lib/build/debug -j`nproc`
                       ccache -s
