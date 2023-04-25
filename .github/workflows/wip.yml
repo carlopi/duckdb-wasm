@@ -207,6 +207,32 @@ jobs:
                   path: ./submodules/duckdb/build/Release/duckdb
                   retention-days: 1
 
+    build_loadable_extensions:
+        name: Native / Debug
+        runs-on: ubuntu-latest
+        needs:
+            - clang_format
+            - eslint
+            - dataprep
+            - tpchgen
+        steps:
+            - uses: actions/checkout@v3
+              with:
+                  submodules: 'recursive'
+                  fetch-depth: 0
+
+            - name: Patch duckdb
+              run: |
+                ./scripts/restore_wip.sh
+
+            - name: Patch duckdb
+              run: |
+                WASM_LOADABLE_EXTENSIONS=1 ./scripts/wasm_build_lib.sh relsize eh
+
+            - name: Patch duckdb
+              run: |
+                ./scripts/build_loadable.sh
+
     native_debug:
         name: Native / Debug
         runs-on: ubuntu-latest
