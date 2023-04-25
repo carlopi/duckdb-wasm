@@ -1,3 +1,8 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+trap exit SIGINT
 mkdir loadable_extensions_1
 mkdir loadable_extensions_2
 
