@@ -1,5 +1,5 @@
 diff --git a/CMakeLists.txt b/CMakeLists.txt
-index 24f6430f44..a1b9dd0519 100644
+index 24f6430f44..09ba7248a5 100644
 --- a/CMakeLists.txt
 +++ b/CMakeLists.txt
 @@ -121,6 +121,12 @@ endif()
@@ -15,15 +15,6 @@ index 24f6430f44..a1b9dd0519 100644
  option(ENABLE_SANITIZER "Enable address sanitizer." TRUE)
  option(ENABLE_THREAD_SANITIZER "Enable thread sanitizer." FALSE)
  option(ENABLE_UBSAN "Enable undefined behavior sanitizer." TRUE)
-diff --git a/extension/parquet/CMakeLists.txt b/extension/parquet/CMakeLists.txt
-index cc9e8dfeaf..43a93ab365 100644
---- a/extension/parquet/CMakeLists.txt
-+++ b/extension/parquet/CMakeLists.txt
-@@ -1,3 +1,4 @@
-+return()
- cmake_minimum_required(VERSION 2.8.12)
- 
- project(ParquetExtension)
 diff --git a/src/include/duckdb/function/cast/default_casts.hpp b/src/include/duckdb/function/cast/default_casts.hpp
 index 448c9c86f3..af7b5e037e 100644
 --- a/src/include/duckdb/function/cast/default_casts.hpp
