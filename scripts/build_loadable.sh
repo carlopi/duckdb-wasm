@@ -3,8 +3,12 @@
 set -euo pipefail
 
 trap exit SIGINT
+
+PROJECT_ROOT="$(cd $(dirname "$BASH_SOURCE[0]") && cd .. && pwd)" &> /dev/null
+
 mkdir loadable_extensions_1
 mkdir loadable_extensions_2
+
 
 FILES="build/relsize/eh/**/*.duckdb_extension"
 for f in $FILES
