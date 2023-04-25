@@ -232,7 +232,7 @@ jobs:
             - name: Patch duckdb
               shell: bash
               run: |
-                ./scripts/build_loadable.sh
+                bash ./scripts/build_loadable.sh
 
     native_debug:
         name: Native / Debug
