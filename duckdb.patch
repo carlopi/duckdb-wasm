@@ -17,7 +17,7 @@ index 448c9c86f3..3f6fb0cf28 100644
  typedef unique_ptr<FunctionLocalState> (*init_cast_local_state_t)(CastLocalStateParameters &parameters);
 +typedef unique_ptr<FunctionLocalState> (*init_cast_local_state_t2)(ClientContext &parameters);
 +
-+//static_assert( 
++//static_assert(
  
  struct BoundCastInfo {
  	DUCKDB_API
@@ -93,7 +93,7 @@ index 95ac02aacb..73e46b9a9a 100644
 +			//if ((typeof runtime === 'object') && runtime && (typeof runtime.unsignedExtensionWarning === 'function') && runtime.unsignedExtensionWarning)
 +			//	runtime.unsignedExtensionWarning(UTF8ToString($0));
 +			//else
-+		    		console.log("Loading DuckDB-Wasm unsigned extension from " + UTF8ToString($0));
++				console.log("Loading DuckDB-Wasm unsigned extension from " + UTF8ToString($0));
 +
 +	    },
 +	    filename.c_str());
