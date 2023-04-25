@@ -222,6 +222,8 @@ jobs:
                 ls *
                 bash ./scripts/restore_wip.sh
 
+            - uses: mymindstorm/setup-emsdk@v12
+
             - name: Patch duckdb
               shell: bash
               run: |
