@@ -8,7 +8,7 @@ PROJECT_ROOT="$(cd $(dirname "$BASH_SOURCE[0]") && cd .. && pwd)" &> /dev/null
 
 mkdir -p loadable_extensions
 
-FILES=build/relsize/eh/**/*.duckdb_extension
+FILES="build/relsize/eh/*/*/*/*/*/*/*/*/*.duckdb_extension build/relsize/eh/*/*/*/*/*/*/*/*.duckdb_extension build/relsize/eh/*/*/*/*/*/*/*.duckdb_extension"
 for f in $FILES
 do
 	ext=`basename $f .duckdb_extension`
