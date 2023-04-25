@@ -224,17 +224,17 @@ jobs:
             - name: Patch duckdb
               shell: bash
               run: |
-                ./scripts/restore_wip.sh
+                sudo ./scripts/restore_wip.sh
 
             - name: Patch duckdb
               shell: bash
               run: |
-                WASM_LOADABLE_EXTENSIONS=1 ./scripts/wasm_build_lib.sh relsize eh
+                sudo WASM_LOADABLE_EXTENSIONS=1 ./scripts/wasm_build_lib.sh relsize eh
 
             - name: Patch duckdb
               shell: bash
               run: |
-                ./scripts/build_loadable.sh
+                sudo ./scripts/build_loadable.sh
 
     native_debug:
         name: Native / Debug
