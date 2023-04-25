@@ -6,17 +6,14 @@ trap exit SIGINT
 
 PROJECT_ROOT="$(cd $(dirname "$BASH_SOURCE[0]") && cd .. && pwd)" &> /dev/null
 
-mkdir loadable_extensions_1
-mkdir loadable_extensions_2
+mkdir -p loadable_extensions
 
-
-FILES="build/relsize/eh/**/*.duckdb_extension"
+FILES=build/relsize/eh/**/*.duckdb_extension
 for f in $FILES
 do
 	ext=`basename $f .duckdb_extension`
 	echo $ext
-	emcc $f -sSIDE_MODULE=1 -o loadable_extensions_1/$ext.duckdb_extension.wasm
-	emcc $f -sSIDE_MODULE=2 -o loadable_extensions_2/$ext.duckdb_extension.wasm
+	emcc $f -sSIDE_MODULE=1 -o loadable_extensions/$ext.duckdb_extension.wasm
 	# calculate SHA256 hash of extension binary
 	# openssl dgst -binary -sha256 $f > $f.hash
 	# encrypt hash with extension signing private key to create signature
@@ -29,4 +26,4 @@ do
 	# aws s3 cp $f.gz s3://duckdb-extensions/$2/$1/$ext.duckdb_extension.gz --acl public-read
 done
 
-ls -la loadable_extensions_*
+ls -la loadable_extensions
