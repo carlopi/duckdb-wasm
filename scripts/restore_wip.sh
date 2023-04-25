@@ -1,3 +1,10 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+trap exit SIGINT
+
+PROJECT_ROOT="$(cd $(dirname "$BASH_SOURCE[0]") && cd .. && pwd)" &> /dev/null
 cd submodules/duckdb
 git apply ../../duckdb.patch
 cd extension
