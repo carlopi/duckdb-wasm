@@ -1,3 +1,20 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 24f6430f44..a1b9dd0519 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -121,6 +121,12 @@ endif()
+ option(FORCE_WARN_UNUSED "Unused code objects lead to compiler warnings." FALSE)
+ 
+ option(WASM_LOADABLE_EXTENSIONS "WebAssembly build with loadable extensions." FALSE)
++
++if($ENV{WASM_LOADABLE_EXTENSIONS})
++  set(WASM_LOADABLE_EXTENSIONS TRUE)
++  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DDUCKDB_ENABLE_DEPRECATED_API") 
++endif()
++
+ option(ENABLE_SANITIZER "Enable address sanitizer." TRUE)
+ option(ENABLE_THREAD_SANITIZER "Enable thread sanitizer." FALSE)
+ option(ENABLE_UBSAN "Enable undefined behavior sanitizer." TRUE)
 diff --git a/extension/parquet/CMakeLists.txt b/extension/parquet/CMakeLists.txt
 index cc9e8dfeaf..43a93ab365 100644
 --- a/extension/parquet/CMakeLists.txt
@@ -8,7 +25,7 @@ index cc9e8dfeaf..43a93ab365 100644
  
  project(ParquetExtension)
 diff --git a/src/include/duckdb/function/cast/default_casts.hpp b/src/include/duckdb/function/cast/default_casts.hpp
-index 448c9c86f3..3f6fb0cf28 100644
+index 448c9c86f3..af7b5e037e 100644
 --- a/src/include/duckdb/function/cast/default_casts.hpp
 +++ b/src/include/duckdb/function/cast/default_casts.hpp
 @@ -82,12 +82,20 @@ struct CastLocalStateParameters {
@@ -33,14 +50,14 @@ index 448c9c86f3..3f6fb0cf28 100644
  	init_cast_local_state_t init_local_state;
  	unique_ptr<BoundCastData> cast_data;
 diff --git a/src/main/extension/extension_load.cpp b/src/main/extension/extension_load.cpp
-index 95ac02aacb..73e46b9a9a 100644
+index 95ac02aacb..c6c6ffaa75 100644
 --- a/src/main/extension/extension_load.cpp
 +++ b/src/main/extension/extension_load.cpp
 @@ -37,6 +37,38 @@ bool ExtensionHelper::TryInitialLoad(DBConfig &config, FileOpener *opener, const
  
  	// shorthand case
  	if (!ExtensionHelper::IsFullPath(extension)) {
-+#ifdef EMSCRIPTEN
++#ifdef WASM_LOADABLE_EXTENSIONS
 +		// This to be refactored away
 +		char *str = (char *)EM_ASM_PTR({
 +			var jsString = ((typeof runtime === 'object') && runtime && (typeof runtime.whereToLoad === 'function') && runtime.whereToLoad) ? runtime.whereToLoad(UTF8ToString($0)) : ("https://s3/extension-eh/wip/" + UTF8ToString($0) + ".duckdb_extension.wasm");
@@ -83,11 +100,11 @@ index 95ac02aacb..73e46b9a9a 100644
  	}
  	if (!fs.FileExists(filename)) {
  		string message;
-@@ -87,12 +120,24 @@ bool ExtensionHelper::TryInitialLoad(DBConfig &config, FileOpener *opener, const
+@@ -87,7 +120,19 @@ bool ExtensionHelper::TryInitialLoad(DBConfig &config, FileOpener *opener, const
  			}
  		}
  		if (!any_valid) {
-+#ifdef EMSCRIPTEN
++#ifdef WASM_LOADABLE_EXTENSIONS
 +	EM_ASM(
 +	    {
 +			//if ((typeof runtime === 'object') && runtime && (typeof runtime.unsignedExtensionWarning === 'function') && runtime.unsignedExtensionWarning)
@@ -103,9 +120,3 @@ index 95ac02aacb..73e46b9a9a 100644
  		}
  	}
  	auto basename = fs.ExtractBaseName(filename);
- 
--#ifdef WASM_LOADABLE_EXTENSIONS
-+#ifdef EMSCRIPTEN
- 	EM_ASM(
- 	    {
- 		    // Next few lines should argubly in separate JavaScript-land function call
