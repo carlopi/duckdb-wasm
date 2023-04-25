@@ -219,7 +219,7 @@ jobs:
             - name: Patch duckdb
               shell: bash
               run: |
-                apt install ccache
+                sudo apt install ccache
                 bash ./scripts/restore_wip.sh
 
             - uses: mymindstorm/setup-emsdk@v12
