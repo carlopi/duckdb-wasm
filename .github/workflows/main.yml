@@ -693,3 +693,28 @@ jobs:
                       ./reports/benchmark_system_sum_csv.json
                       ./reports/benchmark_system_sum_int.json
                   retention-days: 1
+
+            - name: Build @duckdb/benchmarks
+              shell: bash
+              run: |
+                yarn install --frozen-lockfile
+                ./scripts/generate_tpch_tbl.sh 0.01
+                ./scripts/generate_tpch_arrow.sh 0.01
+                ./scripts/generate_tpch_duckdb.sh 0.01
+                ./scripts/generate_tpch_sqlite.sh 0.01
+                yarn workspace @duckdb/benchmarks build
+                yarn workspace @duckdb/benchmarks bench:system:tpch:duckdb 0.01
+                yarn workspace @duckdb/benchmarks bench:system:tpch:sqljs 0.01
+                yarn workspace @duckdb/benchmarks bench:system:tpch:arquero 0.01
+                yarn workspace @duckdb/benchmarks bench:system:tpch:lovefield 0.01
+
+            - name: Upload reports
+              uses: actions/upload-artifact@v3
+              with:
+                  name: reports_tpch_0_01
+                  path: |
+                      ./reports/benchmark_system_tpch_001_duckdb.json
+                      ./reports/benchmark_system_tpch_001_sqljs.json
+                      ./reports/benchmark_system_tpch_001_arquero.json
+                      ./reports/benchmark_system_tpch_001_lovefield.json
+                  retention-days: 1
