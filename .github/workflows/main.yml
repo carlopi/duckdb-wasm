@@ -872,7 +872,7 @@ jobs:
             - name: Upload artifact
               uses: actions/upload-artifact@v3
               with:
-                  name: reports_all
+                  name: reports_various
                   path: |
                       ./reports/benchmarks.arrow
                       ./duckdb/benchmarks.json
