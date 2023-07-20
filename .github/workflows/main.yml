@@ -866,8 +866,8 @@ jobs:
                 cd duckdb
                 wget https://github.com/duckdb/duckdb/releases/download/v0.8.1/duckdb_cli-linux-amd64.zip
                 unzip duckdb_cli-linux-amd64.zip
-                ./duckdb -c "COPY (FROM '../reports/*.json') TO 'benchmarks.json'"
-                ./duckdb -c "COPY (FROM '../reports/*.json') TO 'benchmarks.csv'"
+                ./duckdb -c "COPY (FROM read_json_auto('../reports/*.json', union_by_name=1)) TO 'benchmarks.json'"
+                ./duckdb -c "COPY (FROM read_json_auto('../reports/*.json', union_by_name=1)) TO 'benchmarks.csv'"
 
             - name: Upload artifact
               uses: actions/upload-artifact@v3
