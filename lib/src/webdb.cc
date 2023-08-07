@@ -207,6 +207,10 @@ arrow::Result<std::shared_ptr<arrow::Buffer>> WebDB::Connection::PollPendingQuer
                 current_pending_query_result_.reset();
                 return arrow::Status{arrow::StatusCode::ExecutionError, err};
             }
+            case PendingExecutionResult::NO_TASKS_AVAILABLE: {
+                // No tasks can make progress, bail out
+                return nullptr;
+            }
         }
         auto after = std::chrono::steady_clock::now();
         elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(after - before).count();
