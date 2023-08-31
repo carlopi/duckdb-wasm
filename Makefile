@@ -285,7 +285,7 @@ wasm_star: wasm_relsize wasm_relperf wasm_dev wasm_debug
 
 # Build the duckdb library in debug mode
 .PHONY: js_debug
-js_debug: build/bootstrap wasm yarn_install
+js_debug: build/bootstrap yarn_install
 	yarn workspace @duckdb/duckdb-wasm build:debug
 
 # Build the duckdb library in release mode
@@ -363,7 +363,6 @@ build_loadable:
 	WASM_LOADABLE_EXTENSIONS=1 GEN=ninja USE_MERGED_VCPKG_MANIFEST=1 VCPKG_TOOLCHAIN_PATH="~/vcpkg/scripts/buildsystems/vcpkg.cmake" DUCKDB_WASM_LOADABLE_EXTENSIONS=1 ./scripts/wasm_build_lib.sh relsize eh
 	bash ./scripts/build_loadable.sh relsize eh
 
-.PHONY: serve_loadable
 serve_loadable: wasmpack shell docs
 	yarn workspace @duckdb/duckdb-wasm-app build:release
 	mkdir -p packages/duckdb-wasm-app/build/release/duckdb-wasm/${DUCKDB_HASH}/wasm_eh/
