@@ -1,0 +1,102 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index eb7183d..4324558 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -11,7 +11,7 @@ project(${TARGET_NAME})
+ # Options
+ 
+ # Enable network functionality (OpenSSL and GDAL's CURL based fs/drivers)
+-option(SPATIAL_USE_NETWORK "Enable network functionality" ON)
++option(SPATIAL_USE_NETWORK "Enable network functionality" OFF)
+ 
+ include_directories(spatial/include)
+ add_subdirectory(spatial/src)
+@@ -32,6 +32,9 @@ execute_process(
+   # Generate project
+   COMMAND
+     ${CMAKE_COMMAND} -G ${CMAKE_GENERATOR}
++    -DCMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE}
++    -DDUCKDB_ENABLE_DEPRECATED_API=1
++    -DWASM_LOADABLE_EXTENSIONS=1
+     -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
+     -DOSX_BUILD_ARCH=${OSX_BUILD_ARCH}
+     -DSPATIAL_USE_NETWORK=${SPATIAL_USE_NETWORK} 
+@@ -58,10 +61,11 @@ set(CMAKE_PREFIX_PATH ${CMAKE_PREFIX_PATH}
+                       ${CMAKE_BINARY_DIR}/deps/local)
+ set(CMAKE_FIND_LIBRARY_SUFFIXES ${CMAKE_FIND_LIBRARY_SUFFIXES} MD.lib
+ )# annoyingly for expat on windows
+-set(ZLIB_USE_STATIC_LIBS ON)
+-set(OPENSSL_USE_STATIC_LIBS ON)
++
++set(ZLIB_USE_STATIC_LIBS OFF)
++set(OPENSSL_USE_STATIC_LIBS OFF)
+ find_library(SQLITE3_MEMVFS memvfs)
+-find_package(ZLIB REQUIRED)
++#find_library(ZLIB REQUIRED)
+ find_package(PROJ REQUIRED)
+ find_package(SQLite3 REQUIRED)
+ find_package(GEOS REQUIRED)
+@@ -93,13 +97,6 @@ if(WIN32)
+   list(APPEND EXTENSION_DEPENDENCIES wbemuuid.lib)
+ endif()
+ 
+-if(APPLE)
+-  find_library(CoreFoundation_Library CoreFoundation)
+-  find_library(SystemConfiguration_Library SystemConfiguration)
+-  list(APPEND EXTENSION_DEPENDENCIES ${CoreFoundation_Library}
+-                                     ${SystemConfiguration_Library})
+-endif()
+-
+ # Geographiclib is special
+ include_directories(${GeographicLib_INCLUDE_DIRS})
+ 
+diff --git a/deps/CMakeLists.txt b/deps/CMakeLists.txt
+index 115df4e..5d338a3 100644
+--- a/deps/CMakeLists.txt
++++ b/deps/CMakeLists.txt
+@@ -41,6 +41,7 @@ ExternalProject_Add(
+     -DCMAKE_TOOLCHAIN_FILE='${CMAKE_TOOLCHAIN_FILE}'
+     -DVCPKG_TARGET_TRIPLET='${VCPKG_TARGET_TRIPLET}'
+ )
++find_program(EXE_SQLITE3 sqlite3)
+ set(GDAL_DEPENDENCIES ${GDAL_DEPENDENCIES} ZLIB)
+ 
+ # SQLite3
+@@ -51,7 +52,7 @@ ExternalProject_Add(
+     CONFIGURE_HANDLED_BY_BUILD TRUE
+     CMAKE_ARGS 
+     -DCMAKE_INSTALL_PREFIX:PATH=${LOCAL_INSTALL_DIR}
+-    -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
++    -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE} 
+     -DCMAKE_OSX_ARCHITECTURES=${CMAKE_OSX_ARCHITECTURES_PACKED}
+     -DCMAKE_POSITION_INDEPENDENT_CODE=ON
+     # vcpkg options
+@@ -103,6 +104,10 @@ ExternalProject_Add(
+     CMAKE_ARGS
+     # CMake options
+     -DCMAKE_PREFIX_PATH=${LOCAL_INSTALL_DIR}
++    #-DSQLITE3_INCLUDE_DIR=/Users/carlo/duckdb-wasm-080-plus/build/relsize/eh/third_party/duckdb/src/duckdb_ep-build/deps/local/include
++    -DSQLITE3_INCLUDE_DIR=${LOCAL_INSTALL_DIR}/include
++    #-DSQLITE3_LIBRARY=/Users/carlo/duckdb-wasm-080-plus/build/relsize/eh/third_party/duckdb/src/duckdb_ep-build/deps/local/lib/libsqlite3.a
++    -DSQLITE3_LIBRARY=${LOCAL_INSTALL_DIR}/lib/libsqlite3.a
+     -DCMAKE_INSTALL_PREFIX:PATH=${LOCAL_INSTALL_DIR}
+     -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
+     -DCMAKE_OSX_ARCHITECTURES=${CMAKE_OSX_ARCHITECTURES_PACKED}
+@@ -303,4 +308,4 @@ ExternalProject_Add(
+ 
+ 
+ # Ouch! Remember that the order of these libraries is important! (reverse order of dependencies)
+-#target_link_libraries(dependencies INTERFACE gdal geos_c geos proj expat memvfs sqlite3 zlib)
+\ No newline at end of file
++#target_link_libraries(dependencies INTERFACE gdal geos_c geos proj expat memvfs sqlite3 zlib)
+diff --git a/deps/vendor/sqlite3/CMakeLists.txt b/deps/vendor/sqlite3/CMakeLists.txt
+index 73310c7..1791bea 100644
+--- a/deps/vendor/sqlite3/CMakeLists.txt
++++ b/deps/vendor/sqlite3/CMakeLists.txt
+@@ -34,4 +34,4 @@ endif()
+ install(TARGETS sqlite RUNTIME DESTINATION bin)
+ install(FILES src/sqlite3.h src/sqlite3ext.h DESTINATION include)
+ install(TARGETS sqlite3 LIBRARY DESTINATION lib ARCHIVE DESTINATION lib)
+-install(TARGETS memvfs LIBRARY DESTINATION lib ARCHIVE DESTINATION lib)
+\ No newline at end of file
++install(TARGETS memvfs LIBRARY DESTINATION lib ARCHIVE DESTINATION lib)
