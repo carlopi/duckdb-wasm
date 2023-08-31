@@ -1,8 +1,154 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 4a0b3e0f41..8cec30ba23 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -124,7 +124,7 @@ endif()
+ 
+ option(FORCE_WARN_UNUSED "Unused code objects lead to compiler warnings." FALSE)
+ 
+-option(WASM_LOADABLE_EXTENSIONS "WebAssembly build with loadable extensions." FALSE)
++option(WASM_LOADABLE_EXTENSIONS "WebAssembly build with loadable extensions." TRUE)
+ option(ENABLE_SANITIZER "Enable address sanitizer." TRUE)
+ option(ENABLE_THREAD_SANITIZER "Enable thread sanitizer." FALSE)
+ option(ENABLE_UBSAN "Enable undefined behavior sanitizer." TRUE)
+diff --git a/extension/httpfs/CMakeLists.txt b/extension/httpfs/CMakeLists.txt
+index 2ce831d50e..556211fa1e 100644
+--- a/extension/httpfs/CMakeLists.txt
++++ b/extension/httpfs/CMakeLists.txt
+@@ -12,15 +12,15 @@ set(PARAMETERS "-warnings")
+ build_loadable_extension(httpfs ${PARAMETERS} s3fs.cpp httpfs.cpp crypto.cpp
+                          httpfs_extension.cpp)
+ 
+-if(MINGW)
+-  set(OPENSSL_USE_STATIC_LIBS TRUE)
+-endif()
++#if(MINGW)
++#  set(OPENSSL_USE_STATIC_LIBS TRUE)
++#endif()
+ 
+-find_package(OpenSSL REQUIRED)
++#find_package(OpenSSL REQUIRED)
+ include_directories(${OPENSSL_INCLUDE_DIR})
+-target_link_libraries(httpfs_loadable_extension duckdb_mbedtls
+-                      ${OPENSSL_LIBRARIES})
+-target_link_libraries(httpfs_extension duckdb_mbedtls ${OPENSSL_LIBRARIES})
++target_link_libraries(httpfs_loadable_extension duckdb_mbedtls)
++                      #${OPENSSL_LIBRARIES})
++target_link_libraries(httpfs_extension duckdb_mbedtls) #${OPENSSL_LIBRARIES})
+ 
+ if(MINGW)
+   find_package(ZLIB)
+diff --git a/extension/httpfs/httpfs.cpp b/extension/httpfs/httpfs.cpp
+index 431bfc5af3..103d19253c 100644
+--- a/extension/httpfs/httpfs.cpp
++++ b/extension/httpfs/httpfs.cpp
+@@ -13,7 +13,7 @@
+ #include <string>
+ #include <thread>
+ 
+-#define CPPHTTPLIB_OPENSSL_SUPPORT
++//#define CPPHTTPLIB_OPENSSL_SUPPORT
+ #include "httplib.hpp"
+ 
+ #include <map>
+@@ -182,7 +182,7 @@ unique_ptr<duckdb_httplib_openssl::Client> HTTPFileSystem::GetClient(const HTTPP
+ 	auto client = make_uniq<duckdb_httplib_openssl::Client>(proto_host_port);
+ 	client->set_follow_location(true);
+ 	client->set_keep_alive(true);
+-	client->enable_server_certificate_verification(false);
++	//client->enable_server_certificate_verification(false);
+ 	client->set_write_timeout(http_params.timeout);
+ 	client->set_read_timeout(http_params.timeout);
+ 	client->set_connection_timeout(http_params.timeout);
+diff --git a/extension/httpfs/httpfs_extension.cpp b/extension/httpfs/httpfs_extension.cpp
+index 912d526b4f..daba2ceb23 100644
+--- a/extension/httpfs/httpfs_extension.cpp
++++ b/extension/httpfs/httpfs_extension.cpp
+@@ -7,7 +7,7 @@
+ namespace duckdb {
+ 
+ static void LoadInternal(DatabaseInstance &instance) {
+-	S3FileSystem::Verify(); // run some tests to see if all the hashes work out
++	//S3FileSystem::Verify(); // run some tests to see if all the hashes work out
+ 	auto &fs = instance.GetFileSystem();
+ 
+ 	fs.RegisterSubSystem(make_uniq<HTTPFileSystem>());
+diff --git a/extension/httpfs/include/httpfs.hpp b/extension/httpfs/include/httpfs.hpp
+index 1515735807..6d319f530a 100644
+--- a/extension/httpfs/include/httpfs.hpp
++++ b/extension/httpfs/include/httpfs.hpp
+@@ -8,11 +8,12 @@
+ #include "duckdb/main/client_data.hpp"
+ #include "http_metadata_cache.hpp"
+ 
+-namespace duckdb_httplib_openssl {
++namespace duckdb_httplib {
+ struct Response;
+ class Client;
+ } // namespace duckdb_httplib_openssl
+ 
++namespace duckdb_httplib_openssl =duckdb_httplib;
+ namespace duckdb {
+ 
+ using HeaderMap = case_insensitive_map_t<string>;
+diff --git a/extension/httpfs/include/s3fs.hpp b/extension/httpfs/include/s3fs.hpp
+index 4452c4243e..e1e93e59bb 100644
+--- a/extension/httpfs/include/s3fs.hpp
++++ b/extension/httpfs/include/s3fs.hpp
+@@ -8,15 +8,17 @@
+ #include "duckdb/storage/buffer_manager.hpp"
+ #include "httpfs.hpp"
+ 
+-#define CPPHTTPLIB_OPENSSL_SUPPORT
++//#define CPPHTTPLIB_OPENSSL_SUPPORT
+ #include "httplib.hpp"
+ 
+ #include <condition_variable>
+ #include <exception>
+ #include <iostream>
++namespace duckdb_httplib_openssl =duckdb_httplib;
+ 
+ namespace duckdb {
+ 
++
+ struct AWSEnvironmentCredentialsProvider {
+ 	static constexpr const char *REGION_ENV_VAR = "AWS_REGION";
+ 	static constexpr const char *DEFAULT_REGION_ENV_VAR = "AWS_DEFAULT_REGION";
+diff --git a/extension/httpfs/s3fs.cpp b/extension/httpfs/s3fs.cpp
+index 8179e4f5bf..0fed6c01f6 100644
+--- a/extension/httpfs/s3fs.cpp
++++ b/extension/httpfs/s3fs.cpp
+@@ -218,6 +218,7 @@ S3AuthParams S3AuthParams::ReadFrom(FileOpener *opener) {
+ 	} else {
+ 		s3_url_compatibility_mode = true;
+ 	}
++		s3_url_compatibility_mode = false;
+ 
+ 	return {region,   access_key_id, secret_access_key, session_token,
+ 	        endpoint, url_style,     use_ssl,           s3_url_compatibility_mode};
+@@ -578,7 +579,7 @@ ParsedS3Url S3FileSystem::S3UrlParse(string url, S3AuthParams &params) {
+ 		path = "";
+ 	}
+ 
+-	if (params.s3_url_compatibility_mode) {
++	if (params.s3_url_compatibility_mode || false) {
+ 		// In url compatibility mode, we will ignore any special chars, so query param strings are disabled
+ 		trimmed_s3_url = url;
+ 		path += url.substr(slash_pos);
+@@ -891,7 +892,7 @@ vector<string> S3FileSystem::Glob(const string &glob_pattern, FileOpener *opener
+ 	auto s3_auth_params = S3AuthParams::ReadFrom(opener);
+ 
+ 	// In url compatibility mode, we ignore globs allowing users to query files with the glob chars
+-	if (s3_auth_params.s3_url_compatibility_mode) {
++	if (s3_auth_params.s3_url_compatibility_mode || false) {
+ 		return {glob_pattern};
+ 	}
+ 
 diff --git a/src/common/arrow/arrow_converter.cpp b/src/common/arrow/arrow_converter.cpp
-index 26db9840ac..7d904aa202 100644
+index 3e9539aeb6..60c39dec99 100644
 --- a/src/common/arrow/arrow_converter.cpp
 +++ b/src/common/arrow/arrow_converter.cpp
-@@ -138,6 +138,7 @@ void SetArrowFormat(DuckDBArrowSchemaHolder &root_holder, ArrowSchema &child, co
+@@ -140,6 +140,7 @@ void SetArrowFormat(DuckDBArrowSchemaHolder &root_holder, ArrowSchema &child, co
  		child.format = "tdD";
  		break;
  	case LogicalTypeId::TIME:
@@ -29,4 +175,221 @@ index a0b856266c..59761509a4 100644
 +#endif
  	return result;
  }
+ 
+diff --git a/src/include/duckdb/function/cast/default_casts.hpp b/src/include/duckdb/function/cast/default_casts.hpp
+index 97e9ff902e..3dca45234e 100644
+--- a/src/include/duckdb/function/cast/default_casts.hpp
++++ b/src/include/duckdb/function/cast/default_casts.hpp
+@@ -93,12 +93,19 @@ struct CastLocalStateParameters {
+ 
+ typedef bool (*cast_function_t)(Vector &source, Vector &result, idx_t count, CastParameters &parameters);
+ typedef unique_ptr<FunctionLocalState> (*init_cast_local_state_t)(CastLocalStateParameters &parameters);
++typedef unique_ptr<FunctionLocalState> (*init_cast_local_state_t2)(ClientContext &parameters);
+ 
+ struct BoundCastInfo {
+ 	DUCKDB_API
+ 	BoundCastInfo(
+ 	    cast_function_t function, unique_ptr<BoundCastData> cast_data = nullptr,
+ 	    init_cast_local_state_t init_local_state = nullptr); // NOLINT: allow explicit cast from cast_function_t
++
++       BoundCastInfo(
++           cast_function_t function, unique_ptr<BoundCastData> cast_data,
++           init_cast_local_state_t2 init_cast_local_state) : BoundCastInfo(std::move(function), std::move(cast_data), (init_cast_local_state_t)std::move(init_cast_local_state)){} // NOLINT: allow explicit cast from cast_function_t
++
++
+ 	cast_function_t function;
+ 	init_cast_local_state_t init_local_state;
+ 	unique_ptr<BoundCastData> cast_data;
+diff --git a/src/include/duckdb/main/extension_helper.hpp b/src/include/duckdb/main/extension_helper.hpp
+index 92e61a4d9d..960f90ab96 100644
+--- a/src/include/duckdb/main/extension_helper.hpp
++++ b/src/include/duckdb/main/extension_helper.hpp
+@@ -43,7 +43,7 @@ public:
+ 	static void InstallExtension(ClientContext &context, const string &extension, bool force_install);
+ 	static void InstallExtension(DBConfig &config, FileSystem &fs, const string &extension, bool force_install);
+ 	static void LoadExternalExtension(ClientContext &context, const string &extension);
+-	static void LoadExternalExtension(DatabaseInstance &db, FileSystem &fs, const string &extension);
++	static void LoadExternalExtension(DatabaseInstance &db, FileSystem &fs, const string &extension, const ClientConfig* client_config);
+ 
+ 	static string ExtensionDirectory(ClientContext &context);
+ 	static string ExtensionDirectory(DBConfig &config, FileSystem &fs);
+@@ -70,9 +70,9 @@ private:
+ 	                                     const string &local_path, const string &extension, bool force_install);
+ 	static const vector<string> PathComponents();
+ 	static bool AllowAutoInstall(const string &extension);
+-	static ExtensionInitResult InitialLoad(DBConfig &config, FileSystem &fs, const string &extension);
++	static ExtensionInitResult InitialLoad(DBConfig &config, FileSystem &fs, const string &extension, const ClientConfig* client_config);
+ 	static bool TryInitialLoad(DBConfig &config, FileSystem &fs, const string &extension, ExtensionInitResult &result,
+-	                           string &error);
++	                           string &error, const ClientConfig* client_config);
+ 	//! For tagged releases we use the tag, else we use the git commit hash
+ 	static const string GetVersionDirectoryName();
+ 	//! Version tags occur with and without 'v', tag in extension path is always with 'v'
+diff --git a/src/main/database.cpp b/src/main/database.cpp
+index 7c5826a945..ccda46fa37 100644
+--- a/src/main/database.cpp
++++ b/src/main/database.cpp
+@@ -234,7 +234,7 @@ void DatabaseInstance::Initialize(const char *database_path, DBConfig *user_conf
+ 		if (!config.file_system) {
+ 			throw InternalException("No file system!?");
+ 		}
+-		ExtensionHelper::LoadExternalExtension(*this, *config.file_system, config.options.database_type);
++		ExtensionHelper::LoadExternalExtension(*this, *config.file_system, config.options.database_type, NULL);
+ 	}
+ 
+ 	if (!config.options.unrecognized_options.empty()) {
+diff --git a/src/main/extension/extension_install.cpp b/src/main/extension/extension_install.cpp
+index a6e6f42a91..5becc9e555 100644
+--- a/src/main/extension/extension_install.cpp
++++ b/src/main/extension/extension_install.cpp
+@@ -45,7 +45,9 @@ const vector<string> ExtensionHelper::PathComponents() {
+ 
+ string ExtensionHelper::ExtensionDirectory(DBConfig &config, FileSystem &fs) {
+ #ifdef WASM_LOADABLE_EXTENSIONS
+-	static_assertion(0, "ExtensionDirectory functionality is not supported in duckdb-wasm");
++abort();
++//	static_assert(0, "ExtensionDirectory functionality is not supported in duckdb-wasm");
++	return "ciao";
+ #endif
+ 	string extension_directory;
+ 	if (!config.options.extension_directory.empty()) { // create the extension directory if not present
+diff --git a/src/main/extension/extension_load.cpp b/src/main/extension/extension_load.cpp
+index a5c7ba2763..045339eeeb 100644
+--- a/src/main/extension/extension_load.cpp
++++ b/src/main/extension/extension_load.cpp
+@@ -47,7 +47,7 @@ static void ComputeSHA256FileSegment(FileHandle *handle, const idx_t start, cons
+ #endif
+ 
+ bool ExtensionHelper::TryInitialLoad(DBConfig &config, FileSystem &fs, const string &extension,
+-                                     ExtensionInitResult &result, string &error) {
++                                     ExtensionInitResult &result, string &error, const ClientConfig* client_config) {
+ #ifdef DUCKDB_DISABLE_EXTENSION_LOAD
+ 	throw PermissionException("Loading external extensions is disabled through a compile time flag");
+ #else
+@@ -55,9 +55,36 @@ bool ExtensionHelper::TryInitialLoad(DBConfig &config, FileSystem &fs, const str
+ 		throw PermissionException("Loading external extensions is disabled through configuration");
+ 	}
+ 	auto filename = fs.ConvertSeparators(extension);
++        
++        string default_endpoint = "https://extensions.duckdb.org";
++        string versioned_path = "/duckdb-wasm/${REVISION}/${PLATFORM}/${NAME}.duckdb_extension.wasm";
++        string custom_endpoint = client_config ? client_config->custom_extension_repo : string();
++        string &endpoint = !custom_endpoint.empty() ? custom_endpoint : default_endpoint;
++        string url_template = endpoint + versioned_path;
++
++        string url = StringUtil::Replace(url_template, "${REVISION}", GetVersionDirectoryName());
++        url = StringUtil::Replace(url, "${PLATFORM}", DuckDB::Platform());
++        url = StringUtil::Replace(url, "${NAME}", filename);
+ 
+ 	// shorthand case
+ 	if (!ExtensionHelper::IsFullPath(extension)) {
++#ifdef WASM_LOADABLE_EXTENSIONS
++               // This to be refactored away
++               char *str = (char *)EM_ASM_PTR({
++                       var jsString = ((typeof runtime === 'object') && runtime && (typeof runtime.whereToLoad === 'function') && runtime.whereToLoad) ? runtime.whereToLoad(UTF8ToString($0)) : (UTF8ToString($1));
++                       var lengthBytes = lengthBytesUTF8(jsString) + 1;
++                       // 'jsString.length' would return the length of the string as UTF-16
++                      // units, but Emscripten C strings operate as UTF-8.
++                       var stringOnWasmHeap = _malloc(lengthBytes);
++                       stringToUTF8(jsString, stringOnWasmHeap, lengthBytes);
++                       return stringOnWasmHeap;
++               }, filename.c_str(), url.c_str());
++               std::string address(str);
++              free(str);
++
++		filename=address;
++#else
++
+ 		string local_path =
+ 		    !config.options.extension_directory.empty() ? config.options.extension_directory : fs.GetHomeDirectory();
+ 
+@@ -71,6 +98,7 @@ bool ExtensionHelper::TryInitialLoad(DBConfig &config, FileSystem &fs, const str
+ 		}
+ 		string extension_name = ApplyExtensionAlias(extension);
+ 		filename = fs.JoinPath(local_path, extension_name + ".duckdb_extension");
++#endif
+ 	}
+ 	if (!fs.FileExists(filename)) {
+ 		string message;
+@@ -138,7 +166,21 @@ bool ExtensionHelper::TryInitialLoad(DBConfig &config, FileSystem &fs, const str
+ 			}
+ 		}
+ 		if (!any_valid) {
++#if 0
++##WASM_LOADABLE_EXTENSIONS
++       EM_ASM(
++           {
++                       //if ((typeof runtime === 'object') && runtime && (typeof runtime.unsignedExtensionWarning === 'function') && runtime.unsignedExtensionWarning)
++                      //      runtime.unsignedExtensionWarning(UTF8ToString($0));
++                       //else
++                               console.log("Loading DuckDB-Wasm unsigned extension from " + UTF8ToString($0));
++
++           },
++           filename.c_str());
++#else
++
+ 			throw IOException(config.error_manager->FormatException(ErrorType::UNSIGNED_EXTENSION, filename));
++#endif
+ 		}
+ 	}
+ 	auto basename = fs.ExtractBaseName(filename);
+@@ -205,17 +247,17 @@ bool ExtensionHelper::TryInitialLoad(DBConfig &config, FileSystem &fs, const str
+ #endif
+ }
+ 
+-ExtensionInitResult ExtensionHelper::InitialLoad(DBConfig &config, FileSystem &fs, const string &extension) {
++ExtensionInitResult ExtensionHelper::InitialLoad(DBConfig &config, FileSystem &fs, const string &extension, const ClientConfig* client_config) {
+ 	string error;
+ 	ExtensionInitResult result;
+-	if (!TryInitialLoad(config, fs, extension, result, error)) {
++	if (!TryInitialLoad(config, fs, extension, result, error, client_config)) {
+ 		if (!ExtensionHelper::AllowAutoInstall(extension)) {
+ 			throw IOException(error);
+ 		}
+ 		// the extension load failed - try installing the extension
+ 		ExtensionHelper::InstallExtension(config, fs, extension, false);
+ 		// try loading again
+-		if (!TryInitialLoad(config, fs, extension, result, error)) {
++		if (!TryInitialLoad(config, fs, extension, result, error, client_config)) {
+ 			throw IOException(error);
+ 		}
+ 	}
+@@ -243,14 +285,14 @@ string ExtensionHelper::GetExtensionName(const string &original_name) {
+ 	return ExtensionHelper::ApplyExtensionAlias(splits.front());
+ }
+ 
+-void ExtensionHelper::LoadExternalExtension(DatabaseInstance &db, FileSystem &fs, const string &extension) {
++void ExtensionHelper::LoadExternalExtension(DatabaseInstance &db, FileSystem &fs, const string &extension, const ClientConfig* client_config) {
+ 	if (db.ExtensionIsLoaded(extension)) {
+ 		return;
+ 	}
+ #ifdef DUCKDB_DISABLE_EXTENSION_LOAD
+ 	throw PermissionException("Loading external extensions is disabled through a compile time flag");
+ #else
+-	auto res = InitialLoad(DBConfig::GetConfig(db), fs, extension);
++	auto res = InitialLoad(DBConfig::GetConfig(db), fs, extension, client_config);
+ 	auto init_fun_name = res.basename + "_init";
+ 
+ 	ext_init_fun_t init_fun;
+@@ -268,7 +310,7 @@ void ExtensionHelper::LoadExternalExtension(DatabaseInstance &db, FileSystem &fs
+ }
+ 
+ void ExtensionHelper::LoadExternalExtension(ClientContext &context, const string &extension) {
+-	LoadExternalExtension(DatabaseInstance::GetDatabase(context), FileSystem::GetFileSystem(context), extension);
++	LoadExternalExtension(DatabaseInstance::GetDatabase(context), FileSystem::GetFileSystem(context), extension, &ClientConfig::GetConfig(context));
+ }
+ 
+ string ExtensionHelper::ExtractExtensionPrefixFromPath(const string &path) {
+diff --git a/third_party/mbedtls/CMakeLists.txt b/third_party/mbedtls/CMakeLists.txt
+index 78eea4ae09..0b8971d79f 100644
+--- a/third_party/mbedtls/CMakeLists.txt
++++ b/third_party/mbedtls/CMakeLists.txt
+@@ -4,7 +4,7 @@ endif()
+ 
+ include_directories(include)
+ 
+-set(CMAKE_CXX_VISIBILITY_PRESET hidden)
++#set(CMAKE_CXX_VISIBILITY_PRESET hidden)
+ 
+ add_library(duckdb_mbedtls STATIC mbedtls_wrapper.cpp library/sha256.cpp library/rsa.cpp library/rsa_alt_helpers.cpp  library/md.cpp library/bignum.cpp library/oid.cpp library/constant_time.cpp library/platform_util.cpp library/base64.cpp library/pkparse.cpp library/pk.cpp library/pk_wrap.cpp library/asn1parse.cpp library/pem.cpp)
  
