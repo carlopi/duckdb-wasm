@@ -109,19 +109,6 @@ jobs:
               with:
                   submodules: 'recursive'
 
-            - name: Cache rust build
-              uses: actions/cache@v3
-              with:
-                  path: |
-                      ./.cargo/bin/
-                      ./.cargo/registry/index/
-                      ./.cargo/registry/cache/
-                      ./.cargo/git/db/
-                      ./target
-                  key: ${{ runner.os }}-dataprep-${{ hashFiles('./Cargo.lock') }}-${{ hashFiles('./tools/dataprep/src/*.rs') }}
-                  restore-keys: |
-                      ${{ runner.os }}-dataprep-
-
             - name: Build generator
               shell: bash
               run: |
@@ -146,15 +133,6 @@ jobs:
             - name: Git submodule status
               run: |
                   git submodule status ./submodules/duckdb > git_submodule_status.txt
-
-            - name: Cache ccache
-              uses: actions/cache@v3
-              with:
-                  path: |
-                      ./.ccache
-                  key: ${{ runner.os }}-duckdb-${{ hashFiles('git_submodule_status.txt') }}
-                  restore-keys: |
-                      ${{ runner.os }}-duckdb-
 
             - name: Build DuckDB shell
               shell: bash
@@ -594,31 +572,6 @@ jobs:
               run: |
                   git submodule status > git_submodule_status.txt
 
-            - name: Cache rust build
-              uses: actions/cache@v3
-              with:
-                  path: |
-                      ./.cargo/bin/
-                      ./.cargo/registry/index/
-                      ./.cargo/registry/cache/
-                      ./.cargo/git/db/
-                      ./target
-                  key: ${{ runner.os }}-shell-${{ hashFiles('./Cargo.lock') }}-${{ hashFiles('./packages/duckdb-wasm-shell/crate/src/**') }}
-                  restore-keys: |
-                      ${{ runner.os }}-shell-
-
-            - name: Cache node_modules
-              uses: actions/cache@v3
-              with:
-                  path: |
-                      ./node_modules
-                      ./packages/benchmarks/node_modules
-                      ./packages/duckdb-wasm/node_modules
-                      ./packages/duckdb-wasm-shell/node_modules
-                  key: ${{ runner.os }}-yarn-${{ hashFiles('./yarn.lock') }}
-                  restore-keys: |
-                      ${{ runner.os }}-yarn-
-
             - uses: actions/download-artifact@v3
               with:
                   name: dataprep
@@ -917,31 +870,6 @@ jobs:
             - name: Git submodule status
               run: |
                   git submodule status > git_submodule_status.txt
-
-            - name: Cache rust build
-              uses: actions/cache@v3
-              with:
-                  path: |
-                      ./.cargo/bin/
-                      ./.cargo/registry/index/
-                      ./.cargo/registry/cache/
-                      ./.cargo/git/db/
-                      ./target
-                  key: ${{ runner.os }}-shell-${{ hashFiles('./Cargo.lock') }}-${{ hashFiles('./packages/duckdb-wasm-shell/crate/src/**') }}
-                  restore-keys: |
-                      ${{ runner.os }}-shell-
-
-            - name: Cache node_modules
-              uses: actions/cache@v3
-              with:
-                  path: |
-                      ./node_modules
-                      ./packages/benchmarks/node_modules
-                      ./packages/duckdb-wasm/node_modules
-                      ./packages/duckdb-wasm-shell/node_modules
-                  key: ${{ runner.os }}-yarn-${{ hashFiles('./yarn.lock') }}
-                  restore-keys: |
-                      ${{ runner.os }}-yarn-
 
             - uses: actions/download-artifact@v3
               with:
