@@ -25,8 +25,9 @@ jobs:
                   submodules: 'recursive'
 
             - name: Lint ./lib
-              shell: bash
-              run: |
+              uses: duckdb/duckdb-wasm-ci-env@master
+              with:
+                  script: |-
                       python3 ./scripts/run_clang_format.py \
                         --exclude ./lib/build \
                         --exclude ./lib/third_party \
@@ -53,23 +54,27 @@ jobs:
                       ${{ runner.os }}-yarn-
 
             - name: Prepare repository
-              shell: bash
-              run: |
+              uses: duckdb/duckdb-wasm-ci-env@v0.11
+              with:
+                  script: |-
                       yarn install --frozen-lockfile --prefer-offline
 
             - name: Lint @duckdb/duckdb-wasm
-              shell: bash
-              run: |
+              uses: duckdb/duckdb-wasm-ci-env@v0.11
+              with:
+                  script: |-
                       yarn workspace @duckdb/duckdb-wasm run lint
 
             - name: Lint @duckdb/duckdb-wasm-shell
-              shell: bash
-              run: |
+              uses: duckdb/duckdb-wasm-ci-env@v0.11
+              with:
+                  script: |-
                       yarn workspace @duckdb/duckdb-wasm-shell run lint
 
             - name: Lint @duckdb/benchmarks
-              shell: bash
-              run: |
+              uses: duckdb/duckdb-wasm-ci-env@v0.11
+              with:
+                  script: |-
                       yarn workspace @duckdb/benchmarks run lint
 
     tpchgen:
@@ -89,8 +94,9 @@ jobs:
 
             - name: Build generator
               if: steps.cache-generator.outputs.cache-hit != 'true'
-              shell: bash
-              run: |
+              uses: duckdb/duckdb-wasm-ci-env@master
+              with:
+                  script: |-
                       make -C ./submodules/tpch-dbgen/dbgen/ dbgen
 
             - name: Upload artifact
@@ -157,8 +163,9 @@ jobs:
                       ${{ runner.os }}-duckdb-
 
             - name: Build DuckDB shell
-              shell: bash
-              run: |
+              uses: duckdb/duckdb-wasm-ci-env@master
+              with:
+                  script: |-
                       ccache -z
                       ./scripts/build_duckdb_shell.sh
                       ccache -s
@@ -218,8 +225,9 @@ jobs:
                   [ -f duckdb.patch ] && cd submodules/duckdb && git apply ../../duckdb.patch || echo "No patching needed"
 
             - name: Prepare environment
-              shell: bash
-              run: |
+              uses: duckdb/duckdb-wasm-ci-env@master
+              with:
+                  script: |-
                       mkdir -p ./lib/build/debug ./reports
                       ./scripts/generate_tpch_tbl.sh 0.01
                       ./scripts/generate_tpch_arrow.sh 0.01
@@ -228,8 +236,9 @@ jobs:
                       ccache -s
 
             - name: Build project
-              shell: bash
-              run: |
+              uses: duckdb/duckdb-wasm-ci-env@master
+              with:
+                  script: |-
                       cmake \
                           -S./lib/ \
                           -B./lib/build/debug \
@@ -244,16 +253,18 @@ jobs:
                       ccache -s
 
             - name: Test project
-              shell: bash
-              run: |
+              uses: duckdb/duckdb-wasm-ci-env@master
+              with:
+                  script: |-
                       export LLVM_PROFILE_FILE=./reports/lib.profraw
                       ./lib/build/debug/tester \
                           --source_dir=./lib/ \
                           --gtest_output=xml:./reports/tests_lib_debug.xml
 
             - name: Code Coverage
-              shell: bash
-              run: |
+              uses: duckdb/duckdb-wasm-ci-env@master
+              with:
+                  script: |-
                       llvm-profdata merge \
                           -sparse ./reports/lib.profraw \
                           -o ./reports/lib.profdata
@@ -310,8 +321,9 @@ jobs:
                   [ -f duckdb.patch ] && cd submodules/duckdb && git apply ../../duckdb.patch || echo "No patching needed"
 
             - name: Prepare environment
-              shell: bash
-              run: |
+              uses: duckdb/duckdb-wasm-ci-env@master
+              with:
+                  script: |-
                       mkdir -p ./lib/build/release ./reports
                       ./scripts/generate_tpch_tbl.sh 0.01
                       ./scripts/generate_tpch_arrow.sh 0.01
@@ -320,8 +332,9 @@ jobs:
                       ccache -s
 
             - name: Build project
-              shell: bash
-              run: |
+              uses: duckdb/duckdb-wasm-ci-env@master
+              with:
+                  script: |-
                       cmake \
                           -S./lib/ \
                           -B./lib/build/release \
@@ -336,16 +349,18 @@ jobs:
                       ccache -s
 
             - name: Test project
-              shell: bash
-              run: |
+              uses: duckdb/duckdb-wasm-ci-env@master
+              with:
+                  script: |-
                       export LLVM_PROFILE_FILE=./reports/lib.profraw
                       ./lib/build/release/tester \
                           --source_dir=./lib/ \
                           --gtest_output=xml:./reports/tests_lib_release.xml
 
             - name: Code Coverage
-              shell: bash
-              run: |
+              uses: duckdb/duckdb-wasm-ci-env@master
+              with:
+                  script: |-
                       llvm-profdata merge \
                           -sparse ./reports/lib.profraw \
                           -o ./reports/lib.profdata
@@ -655,8 +670,9 @@ jobs:
                   (cd ./submodules/duckdb && git fetch --all --tags)
 
             - name: Prepare environment
-              shell: bash
-              run: |
+              uses: duckdb/duckdb-wasm-ci-env@master
+              with:
+                  script: |-
                       git config --global --add safe.directory '*'
                       mkdir -p ./lib/build/wasm/release ./reports
                       yarn install --frozen-lockfile
@@ -763,8 +779,9 @@ jobs:
 
             - name: Preparation TPCH 0.01
               if: github.ref == 'refs/heads/main'
-              shell: bash
-              run: |
+              uses: duckdb/duckdb-wasm-ci-env@master
+              with:
+                  script: |-
                       git config --global --add safe.directory '*'
                       mkdir -p ./lib/build/wasm/release ./reports
                       yarn install --frozen-lockfile
@@ -796,8 +813,9 @@ jobs:
 
             - name: Preparation TPCH 0.1
               if: github.ref == 'refs/heads/main'
-              shell: bash
-              run: |
+              uses: duckdb/duckdb-wasm-ci-env@master
+              with:
+                  script: |-
                       git config --global --add safe.directory '*'
                       mkdir -p ./lib/build/wasm/release ./reports
                       yarn install --frozen-lockfile
@@ -829,8 +847,9 @@ jobs:
 
             - name: Preparation TPCH 0.25
               if: github.ref == 'refs/heads/main'
-              shell: bash
-              run: |
+              uses: duckdb/duckdb-wasm-ci-env@master
+              with:
+                  script: |-
                       git config --global --add safe.directory '*'
                       mkdir -p ./lib/build/wasm/release ./reports
                       yarn install --frozen-lockfile
@@ -862,8 +881,9 @@ jobs:
 
             - name: Preparation TPCH 0.5
               if: github.ref == 'refs/heads/main'
-              shell: bash
-              run: |
+              uses: duckdb/duckdb-wasm-ci-env@master
+              with:
+                  script: |-
                       git config --global --add safe.directory '*'
                       mkdir -p ./lib/build/wasm/release ./reports
                       yarn install --frozen-lockfile
@@ -979,8 +999,9 @@ jobs:
                   (cd ./submodules/duckdb && git fetch --all --tags)
 
             - name: Prepare environment
-              shell: bash
-              run: |
+              uses: duckdb/duckdb-wasm-ci-env@master
+              with:
+                  script: |-
                       git config --global --add safe.directory '*'
                       mkdir -p ./lib/build/wasm/release ./reports
                       yarn install --frozen-lockfile
@@ -1110,8 +1131,9 @@ jobs:
                   retention-days: 1
 
             - name: Merge benchmark reports
-              shell: bash
-              run: |
+              uses: duckdb/duckdb-wasm-ci-env@master
+              with:
+                  script: |-
                       chmod +x ./target/release/dataprep
                       ./target/release/dataprep merge-benchmarks -r ./reports/
 
