@@ -124,6 +124,8 @@ export const BROWSER_RUNTIME: DuckDBRuntime & {
                         } else {
                             xhr.open('HEAD', file.dataUrl!, false);
                         }
+			// See https://github.com/duckdb/duckdb-wasm/issues/1580
+                        xhr.setRequestHeader('Range', `bytes=0-`);
                         xhr.send(null);
 
                         // Expect 200 for existing files that we will overwrite or 404 for non-existent files can be created
@@ -287,6 +289,8 @@ export const BROWSER_RUNTIME: DuckDBRuntime & {
                 } else {
                     xhr.open('HEAD', path!, false);
                 }
+		// See https://github.com/duckdb/duckdb-wasm/issues/1580
+                xhr.setRequestHeader('Range', `bytes=0-`);
                 xhr.send(null);
                 if (xhr.status != 200 && xhr.status !== 206) {
                     // Pre-signed resources on S3 in common configurations fail on any HEAD request
@@ -338,6 +342,8 @@ export const BROWSER_RUNTIME: DuckDBRuntime & {
                 } else {
                     xhr.open('HEAD', path!, false);
                 }
+		// See https://github.com/duckdb/duckdb-wasm/issues/1580
+                xhr.setRequestHeader('Range', `bytes=0-`);
                 xhr.send(null);
                 return xhr.status == 206 || xhr.status == 200;
             }
