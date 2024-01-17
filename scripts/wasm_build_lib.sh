@@ -4,6 +4,8 @@ set -euo pipefail
 
 trap exit SIGINT
 
+npm install -g js-beautify
+
 PROJECT_ROOT="$(cd $(dirname "$BASH_SOURCE[0]") && cd .. && pwd)" &> /dev/null
 
 MODE=${1:-Fast}
@@ -64,8 +66,6 @@ emmake make \
     -C${BUILD_DIR} \
     -j${CORES} \
     duckdb_wasm
-
-npm i js-beautify
 js-beautify ${BUILD_DIR}/duckdb_wasm.js > ${BUILD_DIR}/beauty.js
 awk '!(/var .*wasmExports\[/) || /var _duckdb_web/ || /var _main/ || /var _malloc/ || /var _free/ || /stack/' ${BUILD_DIR}/beauty.js > ${BUILD_DIR}/duckdb_wasm.js
 
