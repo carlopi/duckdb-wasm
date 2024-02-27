@@ -815,6 +815,9 @@ arrow::Status WebDB::Open(std::string_view args_json) {
 #ifdef WASM_LOADABLE_EXTENSIONS_UNSIGNED
         db_config.options.allow_unsigned_extensions = true;
 #endif
+	// FIXME: Revert this
+	if (STATIC_WEBDB_FEATURES & (1 << WebDBFeature::THREADS))
+		db_config.options.allow_unsigned_extensions = true;
         db_config.options.maximum_threads = config_->maximum_threads;
         db_config.options.use_temporary_directory = false;
         db_config.options.access_mode = access_mode;
