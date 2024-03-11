@@ -243,4 +243,22 @@ export function testArrowInsertAsync(db: () => duckdb.AsyncDuckDB): void {
             ]);
         });
     });
+    describe('Arrow enums', () => {
+        it('query and send comparison', async () => {
+		const queryResult = await conn.query(`select small_enum from test_all_types()`);
+
+		const sendResult = await conn.send(`select small_enum from test_all_types()`);
+		const sendBatches = await sendResult.readAll();
+
+		const queryRes = queryResult.toArray().map(row => String(row));
+		const sendRes = sendBatches.map(batch => batch.toArray().map(row => String(row)));
+		const sendT = new arrow.Table(sendBatches);
+		const qT = new arrow.Table(queryResult);
+		sendT.getChildAt(0)?.toArray().toEqual(
+			qT.getChildAt(0)?.toArray()
+            );
+
+//		compareTable(qT, sendT);
+        });
+    });
 }
