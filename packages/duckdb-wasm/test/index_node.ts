@@ -76,10 +76,12 @@ import { testCSVInsert, testCSVInsertAsync } from './insert_csv.test';
 import { testTokenization, testTokenizationAsync } from './tokenizer.test';
 import { testTableNames, testTableNamesAsync } from './tablenames.test';
 import { testUDF } from './udf.test';
+import { testSpatialQueries } from './spatial.test'
 import { testRegressionAsync } from './regression';
 import { testFTS } from './fts.test';
 
 testUDF(() => db!);
+testSpatialQueries(() => db!);
 testTableNames(() => db!);
 testTableNamesAsync(() => adb!);
 testRegressionAsync(() => adb!);
