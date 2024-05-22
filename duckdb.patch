@@ -2,6 +2,20 @@ diff --git a/src/include/duckdb/common/enable_shared_from_this.ipp b/src/include
 similarity index 100%
 rename from src/include/duckdb/common/enable_shared_from_this.ipp
 rename to src/include/duckdb/common/enable_shared_from_this_ipp.hpp
+diff --git a/src/include/duckdb/common/file_open_flags.hpp b/src/include/duckdb/common/file_open_flags.hpp
+index d0509a214b..f1689b2975 100644
+--- a/src/include/duckdb/common/file_open_flags.hpp
++++ b/src/include/duckdb/common/file_open_flags.hpp
+@@ -100,8 +100,8 @@ public:
+ 		return flags & FILE_FLAGS_PARALLEL_ACCESS;
+ 	}
+ 
+-private:
+ 	idx_t flags = 0;
++private:
+ 	FileLockType lock = FileLockType::NO_LOCK;
+ 	FileCompressionType compression = FileCompressionType::UNCOMPRESSED;
+ };
 diff --git a/src/include/duckdb/common/shared_ptr.hpp b/src/include/duckdb/common/shared_ptr.hpp
 index 6d0910ca6b..eff60e3db2 100644
 --- a/src/include/duckdb/common/shared_ptr.hpp
