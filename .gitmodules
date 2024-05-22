@@ -30,5 +30,4 @@
 [submodule "submodules/arrow"]
 	path = submodules/arrow
 	url = https://github.com/apache/arrow.git
-	shallow = true
 	ignore = dirty
