@@ -66,7 +66,7 @@ class WebDB {
         arrow::Result<std::shared_ptr<arrow::Buffer>> StreamQueryResult(duckdb::unique_ptr<duckdb::QueryResult> result);
         // Execute a prepared statement by setting up all arguments and returning the query result
         arrow::Result<duckdb::unique_ptr<duckdb::QueryResult>> ExecutePreparedStatement(size_t statement_id,
-                                                                                     std::string_view args_json);
+                                                                                        std::string_view args_json);
         // Call scalar UDF function
         arrow::Status CallScalarUDFFunction(UDFFunctionDeclaration& function, DataChunk& chunk, ExpressionState& state,
                                             Vector& vec);
