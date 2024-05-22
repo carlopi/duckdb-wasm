@@ -1,0 +1,42 @@
+diff --git a/src/include/duckdb/common/enable_shared_from_this.ipp b/src/include/duckdb/common/enable_shared_from_this_ipp.hpp
+similarity index 100%
+rename from src/include/duckdb/common/enable_shared_from_this.ipp
+rename to src/include/duckdb/common/enable_shared_from_this_ipp.hpp
+diff --git a/src/include/duckdb/common/shared_ptr.hpp b/src/include/duckdb/common/shared_ptr.hpp
+index 6d0910ca6b..eff60e3db2 100644
+--- a/src/include/duckdb/common/shared_ptr.hpp
++++ b/src/include/duckdb/common/shared_ptr.hpp
+@@ -37,9 +37,9 @@ struct compatible_with_t : std::is_convertible<U *, T *> {}; // NOLINT: invalid
+ 
+ } // namespace duckdb
+ 
+-#include "duckdb/common/shared_ptr.ipp"
+-#include "duckdb/common/weak_ptr.ipp"
+-#include "duckdb/common/enable_shared_from_this.ipp"
++#include "duckdb/common/shared_ptr_ipp.hpp"
++#include "duckdb/common/weak_ptr_ipp.hpp"
++#include "duckdb/common/enable_shared_from_this_ipp.hpp"
+ 
+ namespace duckdb {
+ 
+diff --git a/src/include/duckdb/common/shared_ptr.ipp b/src/include/duckdb/common/shared_ptr_ipp.hpp
+similarity index 100%
+rename from src/include/duckdb/common/shared_ptr.ipp
+rename to src/include/duckdb/common/shared_ptr_ipp.hpp
+diff --git a/src/include/duckdb/common/weak_ptr.ipp b/src/include/duckdb/common/weak_ptr_ipp.hpp
+similarity index 100%
+rename from src/include/duckdb/common/weak_ptr.ipp
+rename to src/include/duckdb/common/weak_ptr_ipp.hpp
+diff --git a/src/main/extension/extension_install.cpp b/src/main/extension/extension_install.cpp
+index d188cb5dc3..d323fe9d7a 100644
+--- a/src/main/extension/extension_install.cpp
++++ b/src/main/extension/extension_install.cpp
+@@ -194,7 +194,7 @@ string ExtensionHelper::ExtensionUrlTemplate(optional_ptr<const DBConfig> db_con
+ 		versioned_path = "/${REVISION}/${PLATFORM}/${NAME}.duckdb_extension";
+ 	}
+ #ifdef WASM_LOADABLE_EXTENSIONS
+-	string default_endpoint = DEFAULT_REPOSITORY;
++	string default_endpoint = ExtensionRepository::DEFAULT_REPOSITORY_URL;
+ 	versioned_path = versioned_path + ".wasm";
+ #else
+ 	string default_endpoint = ExtensionRepository::DEFAULT_REPOSITORY_URL;
