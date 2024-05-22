@@ -1,3 +1,49 @@
+diff --git a/extension/extension_config.cmake b/extension/extension_config.cmake
+index 8990ddc4bc..02b3485c1c 100644
+--- a/extension/extension_config.cmake
++++ b/extension/extension_config.cmake
+@@ -1,17 +1,17 @@
+ ################################################################################
+-# DuckDB extension base config
++# DuckDB-Wasm extension base config
+ ################################################################################
+ #
+-# This is the base DuckDB extension configuration file. The extensions loaded here are included in every DuckDB build.
+-# Note that this file is checked into version control; if you want to specify which extensions to load for local
+-# development, create `extension/extension_config_local.cmake` and specify extensions there.
+-# The local file is also loaded by the DuckDB CMake build but ignored by version control.
++duckdb_extension_load(json DONT_LINK)
++duckdb_extension_load(parquet DONT_LINK)
++duckdb_extension_load(autocomplete DONT_LINK)
+ 
+-# Parquet is loaded by default on every build as its a essential part of DuckDB
+-duckdb_extension_load(parquet)
++duckdb_extension_load(excel DONT_LINK)
++duckdb_extension_load(fts DONT_LINK)
++duckdb_extension_load(inet DONT_LINK)
++duckdb_extension_load(icu DONT_LINK)
++duckdb_extension_load(sqlsmith DONT_LINK)
++duckdb_extension_load(tpcds DONT_LINK)
++duckdb_extension_load(tpch DONT_LINK)
+ 
+-# The Linux allocator has issues so we use jemalloc, but only on x86 because page sizes are fixed at 4KB.
+-# If page sizes vary for an architecture (e.g., arm64), we cannot create a portable binary due to jemalloc config
+-if(OS_NAME STREQUAL "linux" AND (OS_ARCH STREQUAL "amd64" OR OS_ARCH STREQUAL "i386") AND NOT WASM_LOADABLE_EXTENSIONS AND NOT CLANG_TIDY AND NOT ANDROID AND NOT ZOS)
+-    duckdb_extension_load(jemalloc)
+-endif()
++#duckdb_extension_load(httpfs DONT_LINK)
+diff --git a/scripts/test_docker_images.sh b/scripts/test_docker_images.sh
+index c805ce897e..c43bc6c27e 100755
+--- a/scripts/test_docker_images.sh
++++ b/scripts/test_docker_images.sh
+@@ -8,6 +8,7 @@ make clean
+ # Currently not working due to cmake version being too low
+ # docker run -i --rm -v $(pwd):/duckdb --workdir /duckdb amazonlinux:2 <<< "yum install gcc gcc-c++ git make cmake ninja-build -y && GEN=ninja make && $TEST" 2>&1
+ 
++docker run -i --rm -v $(pwd):/duckdb --workdir /duckdb alpine:latest <<< "apk add g++ git make cmake ninja python3 && cmake -Bbuild_folder . && cmake --build build_folder && cmake --install build_folder && g++ -std=c++11 examples/embedded-c++/main.cpp"
+ docker run -i --rm -v $(pwd):/duckdb --workdir /duckdb amazonlinux:latest <<< "yum install clang git make cmake ninja-build -y && GEN=ninja make && $TEST" 2>&1
+ docker run -i --platform linux/arm64 --rm -v $(pwd):/duckdb --workdir /duckdb alpine:latest <<< "apk add g++ git make cmake ninja && GEN=ninja make && $TEST" 2>&1
+ docker run -i --platform linux/amd64 --rm -v $(pwd):/duckdb --workdir /duckdb alpine:latest <<< "apk add g++ git make cmake ninja && GEN=ninja make && $TEST" 2>&1
 diff --git a/src/include/duckdb/common/enable_shared_from_this.ipp b/src/include/duckdb/common/enable_shared_from_this_ipp.hpp
 similarity index 100%
 rename from src/include/duckdb/common/enable_shared_from_this.ipp
@@ -41,6 +87,26 @@ diff --git a/src/include/duckdb/common/weak_ptr.ipp b/src/include/duckdb/common/
 similarity index 100%
 rename from src/include/duckdb/common/weak_ptr.ipp
 rename to src/include/duckdb/common/weak_ptr_ipp.hpp
+diff --git a/src/main/extension/extension_helper.cpp b/src/main/extension/extension_helper.cpp
+index 3954e232b7..9679e18d05 100644
+--- a/src/main/extension/extension_helper.cpp
++++ b/src/main/extension/extension_helper.cpp
+@@ -304,7 +304,6 @@ vector<ExtensionUpdateResult> ExtensionHelper::UpdateExtensions(DatabaseInstance
+ 
+ 	auto &config = DBConfig::GetConfig(db);
+ 
+-#ifndef WASM_LOADABLE_EXTENSIONS
+ 	case_insensitive_set_t seen_extensions;
+ 
+ 	// scan the install directory for installed extensions
+@@ -321,7 +320,6 @@ vector<ExtensionUpdateResult> ExtensionHelper::UpdateExtensions(DatabaseInstance
+ 
+ 		result.push_back(UpdateExtensionInternal(db, fs, fs.JoinPath(ext_directory, path), extension_name));
+ 	});
+-#endif
+ 
+ 	for (const auto &extension : db.LoadedExtensions()) {
+ 		if (seen_extensions.find(extension) != seen_extensions.end()) {
 diff --git a/src/main/extension/extension_install.cpp b/src/main/extension/extension_install.cpp
 index d188cb5dc3..d323fe9d7a 100644
 --- a/src/main/extension/extension_install.cpp
@@ -54,3 +120,17 @@ index d188cb5dc3..d323fe9d7a 100644
  	versioned_path = versioned_path + ".wasm";
  #else
  	string default_endpoint = ExtensionRepository::DEFAULT_REPOSITORY_URL;
+diff --git a/src/main/extension/extension_load.cpp b/src/main/extension/extension_load.cpp
+index 65438aa8ec..db3c552ded 100644
+--- a/src/main/extension/extension_load.cpp
++++ b/src/main/extension/extension_load.cpp
+@@ -175,7 +175,8 @@ bool ExtensionHelper::TryInitialLoad(DBConfig &config, FileSystem &fs, const str
+ 		direct_load = false;
+ 		string extension_name = ApplyExtensionAlias(extension);
+ #ifdef WASM_LOADABLE_EXTENSIONS
+-		string url_template = ExtensionUrlTemplate(&config, "");
++		ExtensionRepository repository;
++		string url_template = ExtensionUrlTemplate(&config, repository, "");
+ 		string url = ExtensionFinalizeUrlTemplate(url_template, extension_name);
+ 
+ 		char *str = (char *)EM_ASM_PTR(
