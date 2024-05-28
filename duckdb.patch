@@ -44,6 +44,31 @@ index c805ce897e..c43bc6c27e 100755
  docker run -i --rm -v $(pwd):/duckdb --workdir /duckdb amazonlinux:latest <<< "yum install clang git make cmake ninja-build -y && GEN=ninja make && $TEST" 2>&1
  docker run -i --platform linux/arm64 --rm -v $(pwd):/duckdb --workdir /duckdb alpine:latest <<< "apk add g++ git make cmake ninja && GEN=ninja make && $TEST" 2>&1
  docker run -i --platform linux/amd64 --rm -v $(pwd):/duckdb --workdir /duckdb alpine:latest <<< "apk add g++ git make cmake ninja && GEN=ninja make && $TEST" 2>&1
+diff --git a/src/common/file_system.cpp b/src/common/file_system.cpp
+index 27160adc3f..ec0c5de37c 100644
+--- a/src/common/file_system.cpp
++++ b/src/common/file_system.cpp
+@@ -317,6 +317,7 @@ string FileSystem::ExtractBaseName(const string &path) {
+ }
+ 
+ string FileSystem::GetHomeDirectory(optional_ptr<FileOpener> opener) {
++	std::cout << "GetHomeDirectory with opener\n";
+ 	// read the home_directory setting first, if it is set
+ 	if (opener) {
+ 		Value result;
+@@ -335,10 +336,12 @@ string FileSystem::GetHomeDirectory(optional_ptr<FileOpener> opener) {
+ }
+ 
+ string FileSystem::GetHomeDirectory() {
++	std::cout << "GetHomeDirectory\n";
+ 	return GetHomeDirectory(nullptr);
+ }
+ 
+ string FileSystem::ExpandPath(const string &path, optional_ptr<FileOpener> opener) {
++	std::cout << "ExpandPath\n";
+ 	if (path.empty()) {
+ 		return path;
+ 	}
 diff --git a/src/include/duckdb/common/enable_shared_from_this.ipp b/src/include/duckdb/common/enable_shared_from_this_ipp.hpp
 similarity index 100%
 rename from src/include/duckdb/common/enable_shared_from_this.ipp
@@ -87,6 +112,23 @@ diff --git a/src/include/duckdb/common/weak_ptr.ipp b/src/include/duckdb/common/
 similarity index 100%
 rename from src/include/duckdb/common/weak_ptr.ipp
 rename to src/include/duckdb/common/weak_ptr_ipp.hpp
+diff --git a/src/include/duckdb/main/extension_install_info.hpp b/src/include/duckdb/main/extension_install_info.hpp
+index 64b7b520a7..b03f64b3aa 100644
+--- a/src/include/duckdb/main/extension_install_info.hpp
++++ b/src/include/duckdb/main/extension_install_info.hpp
+@@ -49,9 +49,9 @@ public:
+ 
+ struct ExtensionRepository {
+ 	//! All currently available repositories
+-	static constexpr const char *CORE_REPOSITORY_URL = "http://extensions.duckdb.org";
+-	static constexpr const char *CORE_NIGHTLY_REPOSITORY_URL = "http://nightly-extensions.duckdb.org";
+-	static constexpr const char *COMMUNITY_REPOSITORY_URL = "http://community-extensions.duckdb.org";
++	static constexpr const char *CORE_REPOSITORY_URL = "https://extensions.duckdb.org";
++	static constexpr const char *CORE_NIGHTLY_REPOSITORY_URL = "https://nightly-extensions.duckdb.org";
++	static constexpr const char *COMMUNITY_REPOSITORY_URL = "https://community-extensions.duckdb.org";
+ 
+ 	//! Debugging repositories (target local, relative paths that are produced by DuckDB's build system)
+ 	static constexpr const char *BUILD_DEBUG_REPOSITORY_PATH = "./build/debug/repository";
 diff --git a/src/main/extension/extension_helper.cpp b/src/main/extension/extension_helper.cpp
 index 3954e232b7..9679e18d05 100644
 --- a/src/main/extension/extension_helper.cpp
@@ -121,10 +163,10 @@ index d188cb5dc3..d323fe9d7a 100644
  #else
  	string default_endpoint = ExtensionRepository::DEFAULT_REPOSITORY_URL;
 diff --git a/src/main/extension/extension_load.cpp b/src/main/extension/extension_load.cpp
-index 65438aa8ec..db3c552ded 100644
+index 65438aa8ec..57f390cb5b 100644
 --- a/src/main/extension/extension_load.cpp
 +++ b/src/main/extension/extension_load.cpp
-@@ -175,7 +175,8 @@ bool ExtensionHelper::TryInitialLoad(DBConfig &config, FileSystem &fs, const str
+@@ -175,15 +175,18 @@ bool ExtensionHelper::TryInitialLoad(DBConfig &config, FileSystem &fs, const str
  		direct_load = false;
  		string extension_name = ApplyExtensionAlias(extension);
  #ifdef WASM_LOADABLE_EXTENSIONS
@@ -134,3 +176,64 @@ index 65438aa8ec..db3c552ded 100644
  		string url = ExtensionFinalizeUrlTemplate(url_template, extension_name);
  
  		char *str = (char *)EM_ASM_PTR(
+ 		    {
++			console.log("ASDASDASDAS");
+ 			    var jsString = ((typeof runtime == 'object') && runtime && (typeof runtime.whereToLoad == 'function') &&
+ 			                    runtime.whereToLoad)
+ 			                       ? runtime.whereToLoad(UTF8ToString($0))
+ 			                       : (UTF8ToString($1));
++			console.log("ASDASDASDAS");
+ 			    var lengthBytes = lengthBytesUTF8(jsString) + 1;
+ 			    // 'jsString.length' would return the length of the string as UTF-16
+ 			    // units, but Emscripten C strings operate as UTF-8.
+@@ -215,7 +218,7 @@ bool ExtensionHelper::TryInitialLoad(DBConfig &config, FileSystem &fs, const str
+ 		direct_load = true;
+ 		filename = fs.ExpandPath(filename);
+ 	}
+-	if (!fs.FileExists(filename)) {
++/*	if (!fs.FileExists(filename)) {
+ 		string message;
+ 		bool exact_match = ExtensionHelper::CreateSuggestions(extension, message);
+ 		if (exact_match) {
+@@ -224,8 +227,9 @@ bool ExtensionHelper::TryInitialLoad(DBConfig &config, FileSystem &fs, const str
+ 		error = StringUtil::Format("Extension \"%s\" not found.\n%s", filename, message);
+ 		return false;
+ 	}
++*/
+ 
+-	auto handle = fs.OpenFile(filename, FileFlags::FILE_FLAGS_READ);
++/*	auto handle = fs.OpenFile(filename, FileFlags::FILE_FLAGS_READ);
+ 
+ 	// Parse the extension metadata from the extension binary
+ 	auto parsed_metadata = ParseExtensionMetaData(*handle);
+@@ -256,7 +260,7 @@ bool ExtensionHelper::TryInitialLoad(DBConfig &config, FileSystem &fs, const str
+ 			throw InvalidInputException(metadata_mismatch_error);
+ 		}
+ 	}
+-
++*/
+ 	auto filebase = fs.ExtractBaseName(filename);
+ 
+ #ifdef WASM_LOADABLE_EXTENSIONS
+@@ -294,6 +298,7 @@ bool ExtensionHelper::TryInitialLoad(DBConfig &config, FileSystem &fs, const str
+ 	result.lib_hdl = lib_hdl;
+ 
+ 	if (!direct_load) {
++/*
+ 		auto info_file_name = filename + ".info";
+ 
+ 		result.install_info = ExtensionInstallInfo::TryReadInfoFile(fs, info_file_name, lowercase_extension_name);
+@@ -308,11 +313,12 @@ bool ExtensionHelper::TryInitialLoad(DBConfig &config, FileSystem &fs, const str
+ 			                  "extension using `FORCE INSTALL '%s'`",
+ 			                  filename, extension);
+ 		}
++*/
+ 	} else {
+ 		result.install_info = make_uniq<ExtensionInstallInfo>();
+ 		result.install_info->mode = ExtensionInstallMode::NOT_INSTALLED;
+ 		result.install_info->full_path = filename;
+-		result.install_info->version = parsed_metadata.extension_version;
++		result.install_info->version = "ASD";//parsed_metadata.extension_version;
+ 	}
+ 
+ 	return true;
