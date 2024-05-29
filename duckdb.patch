@@ -1,9 +1,3 @@
-commit 9c4a294ed1b7a973d405295ecbefb92851c82101
-Author: Carlo Piovesan <piovesan.carlo@gmail.com>
-Date:   Wed May 22 16:32:18 2024 +0200
-
-    Move .ipp files to _ipp.hpp
-
 diff --git a/src/include/duckdb/common/enable_shared_from_this.ipp b/src/include/duckdb/common/enable_shared_from_this_ipp.hpp
 similarity index 100%
 rename from src/include/duckdb/common/enable_shared_from_this.ipp
