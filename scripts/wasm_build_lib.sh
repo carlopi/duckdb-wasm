@@ -75,7 +75,7 @@ js-beautify ${BUILD_DIR}/duckdb_wasm.js > ${BUILD_DIR}/beauty.js
 awk '!(/var .*wasmExports\[/ || /var [_a-z0-9A-Z]+ = Module\[\"[_a-z0-9A-Z]+\"\] = [0-9]+;/) || /var _duckdb_web/ || /var _main/ || /var _malloc/ || /var _free/ || /var stack/ || /var ___dl_seterr/ || /var __em/ || /var _em/ || /var _pthread/' ${BUILD_DIR}/beauty.js > ${BUILD_DIR}/duckdb_wasm.js
 cp ${BUILD_DIR}/duckdb_wasm.wasm ${BUILD_DIR}/duckdb_wasm_origin.wasm
 wasm2wat --enable-all ${BUILD_DIR}/duckdb_wasm.wasm > ${BUILD_DIR}/duckdb_wat.wat
-grep -v "export.*Executor" ${BUILD_DIR}/duckdb_wat.wat > ${BUILD_DIR}/duckdb_wat_filtered.wat
+grep -v -E 'export.*Executor' ${BUILD_DIR}/duckdb_wat.wat > ${BUILD_DIR}/duckdb_wat_filtered.wat
 wat2wasm --enable-all ${BUILD_DIR}/duckdb_wat_filtered.wat -o ${BUILD_DIR}/duckdb_wasm.wasm
 
 
