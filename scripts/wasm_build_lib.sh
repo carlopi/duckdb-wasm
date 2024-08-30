@@ -73,6 +73,7 @@ npm install -g js-beautify
 js-beautify ${BUILD_DIR}/duckdb_wasm.js > ${BUILD_DIR}/beauty.js
 awk '!(/var .*wasmExports\[/ || /var [_a-z0-9A-Z]+ = Module\[\"[_a-z0-9A-Z]+\"\] = [0-9]+;/) || /var _duckdb_web/ || /var _main/ || /var _malloc/ || /var _free/ || /var stack/ || /var ___dl_seterr/ || /var __em/ || /var _em/ || /var _pthread/' ${BUILD_DIR}/beauty.js > ${BUILD_DIR}/duckdb_wasm.js
 cp ${BUILD_DIR}/duckdb_wasm.wasm ${BUILD_DIR}/duckdb_wasm_origin.wasm
+apt-get install wabt
 npm install -g webassembly-binary-toolkit
 wasm2wat --enable-all ${BUILD_DIR}/duckdb_wasm.wasm > ${BUILD_DIR}/duckdb_wat.wat
 grep -v "export.*Executor" ${BUILD_DIR}/duckdb_wat.wat > ${BUILD_DIR}/duckdb_wat_filtered.wat
