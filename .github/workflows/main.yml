@@ -953,7 +953,7 @@ jobs:
 
             - name: Git submodule status
               run: |
-                  sudo brew install wabt
+                  brew install wabt
                   cd mvp && ./../scripts/wasm_cut.sh mvp && cd ..
                   cd eh && ./../scripts/wasm_cut.sh eh && cd ..
                   cd threads && ./../scripts/wasm_cut.sh coi && cd ..
