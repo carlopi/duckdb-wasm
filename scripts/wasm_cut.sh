@@ -1,3 +1,4 @@
+ls -la *
 wasm2wat --enable-all duckdb_wasm.wasm -o duckdb_wat.wat
 ls -la duckdb_wasm.wasm
 sed -i "/export*Executor/c\" ${BUILD_DIR}/duckdb_wat.wat
