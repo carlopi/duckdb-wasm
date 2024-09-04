@@ -948,9 +948,9 @@ jobs:
 
             - name: Git submodule status
               run: |
-                  cd mvp && ./../scripts/wasm_cut.sh && cd ..
-                  cd eh && ./../scripts/wasm_cut.sh && cd ..
-                  cd threads && ./../scripts/wasm_cut.sh && cd ..
+                  cd mvp && ./../scripts/wasm_cut.sh mvp && cd ..
+                  cd eh && ./../scripts/wasm_cut.sh eh && cd ..
+                  cd threads && ./../scripts/wasm_cut.sh coi && cd ..
                   mkdir total
                   mv mvp/* total/.
                   mv eh/* total/.
