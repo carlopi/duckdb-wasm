@@ -1,0 +1,21 @@
+diff --git a/src/main/config.cpp b/src/main/config.cpp
+index 9594ccae13..5e1d0bd8a0 100644
+--- a/src/main/config.cpp
++++ b/src/main/config.cpp
+@@ -360,6 +360,7 @@ idx_t DBConfig::GetSystemMaxThreads(FileSystem &fs) {
+ }
+ 
+ idx_t DBConfig::GetSystemAvailableMemory(FileSystem &fs) {
++/*
+ 	// Check SLURM environment variables first
+ 	const char *slurm_mem_per_node = getenv("SLURM_MEM_PER_NODE");
+ 	const char *slurm_mem_per_cpu = getenv("SLURM_MEM_PER_CPU");
+@@ -384,6 +385,8 @@ idx_t DBConfig::GetSystemAvailableMemory(FileSystem &fs) {
+ 		return DBConfigOptions().maximum_memory;
+ 	}
+ 	return memory.GetIndex();
++*/
++		return DBConfigOptions().maximum_memory;
+ }
+ 
+ idx_t DBConfig::ParseMemoryLimit(const string &arg) {
