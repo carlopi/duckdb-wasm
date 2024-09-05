@@ -1022,7 +1022,7 @@ jobs:
               shell: bash
               run: |
                       rm -rf ./packages/duckdb-wasm/dist/
-                      yarn workspace @duckdb/duckdb-wasm build:release
+                      yarn workspace @duckdb/duckdb-wasm build:debug
                       yarn workspace @duckdb/duckdb-wasm docs
 
             - name: Build @duckdb/duckdb-wasm-shell
@@ -1050,7 +1050,6 @@ jobs:
             #                      yarn workspace @duckdb/duckdb-wasm test:firefox
 
             - name: Test @duckdb/duckdb-wasm on Node.js
-              if: false
               shell: bash
               run: |
                       yarn workspace @duckdb/duckdb-wasm test:node
