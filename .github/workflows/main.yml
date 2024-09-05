@@ -511,7 +511,7 @@ jobs:
 
             - name: Build Wasm module
               run: |
-                  DUCKDB_PLATFORM="wasm_mvp" DUCKDB_WASM_LOADABLE_EXTENSIONS=1 GEN=ninja ./scripts/wasm_build_lib.sh relsize mvp
+                  DUCKDB_PLATFORM="wasm_mvp" DUCKDB_WASM_LOADABLE_EXTENSIONS=1 GEN=ninja ./scripts/wasm_build_lib.sh debug mvp
 
             - name: Upload artifact
               uses: actions/upload-artifact@v4
@@ -555,7 +555,7 @@ jobs:
 
             - name: Build Wasm module
               run: |
-                  DUCKDB_PLATFORM="wasm_eh" DUCKDB_WASM_LOADABLE_EXTENSIONS=1 GEN=ninja ./scripts/wasm_build_lib.sh relsize eh
+                  DUCKDB_PLATFORM="wasm_eh" DUCKDB_WASM_LOADABLE_EXTENSIONS=1 GEN=ninja ./scripts/wasm_build_lib.sh debug eh
 
             - name: Upload artifact
               uses: actions/upload-artifact@v4
@@ -598,7 +598,7 @@ jobs:
 
             - name: Build Wasm module
               run: |
-                  DUCKDB_PLATFORM="wasm_threads" DUCKDB_WASM_LOADABLE_EXTENSIONS="signed" GEN=ninja ./scripts/wasm_build_lib.sh relsize coi
+                  DUCKDB_PLATFORM="wasm_threads" DUCKDB_WASM_LOADABLE_EXTENSIONS="signed" GEN=ninja ./scripts/wasm_build_lib.sh debug coi
 
             - name: Upload artifact
               uses: actions/upload-artifact@v4
