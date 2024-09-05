@@ -1062,6 +1062,16 @@ jobs:
               shell: bash
               run: zip -r duckdb-wasm-packages.zip ./packages
 
+            - name: try to break this
+              shell: bash
+              run: |
+                  git clone https://github.com/carlopi/examples_.git
+                  cd examples_/duckdb-wasm-1.1.0
+                  npm install
+                  npm install duckdb-wasm-packages-loadable/duckdb-wasm/
+                  npm run build
+                  node dist/index.js
+
             - uses: actions/upload-artifact@v4
               with:
                   name: duckdb-wasm-packages-loadable
