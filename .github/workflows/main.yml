@@ -955,8 +955,8 @@ jobs:
               run: |
                   brew install wabt
                   cd mvp && ./../scripts/wasm_cut.sh mvp && cd ..
-                  #cd eh && ./../scripts/wasm_cut.sh eh && cd ..
-                  cd threads && ./../scripts/wasm_cut.sh coi && cd ..
+                  cd eh && ./../scripts/wasm_cut.sh eh && cd ..
+                  #cd threads && ./../scripts/wasm_cut.sh coi && cd ..
                   mkdir total
                   mv mvp/* total/.
                   mv eh/* total/.
