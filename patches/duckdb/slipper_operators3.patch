@@ -1,8 +1,47 @@
 diff --git a/src/execution/expression_executor.cpp b/src/execution/expression_executor.cpp
-index 716672d86a..e8d60438d9 100644
+index 716672d86a..d847d5d4a9 100644
 --- a/src/execution/expression_executor.cpp
 +++ b/src/execution/expression_executor.cpp
-@@ -297,11 +297,11 @@ idx_t ExpressionExecutor::DefaultSelect(const Expression &expr, ExpressionState
+@@ -250,16 +250,16 @@ static inline idx_t DefaultSelectLoop(const SelectionVector *bsel, const uint8_t
+ 		auto bidx = bsel->get_index(i);
+ 		auto result_idx = sel->get_index(i);
+ 		if ((NO_NULL || mask.RowIsValid(bidx)) && bdata[bidx] > 0) {
+-			if (HAS_TRUE_SEL) {
++			if (HAS_TRUE_SEL && true_sel) {
+ 				true_sel->set_index(true_count++, result_idx);
+ 			}
+ 		} else {
+-			if (HAS_FALSE_SEL) {
++			if (HAS_FALSE_SEL && false_sel) {
+ 				false_sel->set_index(false_count++, result_idx);
+ 			}
+ 		}
+ 	}
+-	if (HAS_TRUE_SEL) {
++	if (HAS_TRUE_SEL && true_sel) {
+ 		return true_count;
+ 	} else {
+ 		return count - false_count;
+@@ -269,6 +269,9 @@ static inline idx_t DefaultSelectLoop(const SelectionVector *bsel, const uint8_t
+ template <bool NO_NULL>
+ static inline idx_t DefaultSelectSwitch(UnifiedVectorFormat &idata, const SelectionVector *sel, idx_t count,
+                                         SelectionVector *true_sel, SelectionVector *false_sel) {
++		return DefaultSelectLoop<NO_NULL, true, true>(idata.sel, UnifiedVectorFormat::GetData<uint8_t>(idata),
++		                                              idata.validity, sel, count, true_sel, false_sel);
++/*
+ 	if (true_sel && false_sel) {
+ 		return DefaultSelectLoop<NO_NULL, true, true>(idata.sel, UnifiedVectorFormat::GetData<uint8_t>(idata),
+ 		                                              idata.validity, sel, count, true_sel, false_sel);
+@@ -279,7 +282,7 @@ static inline idx_t DefaultSelectSwitch(UnifiedVectorFormat &idata, const Select
+ 		D_ASSERT(false_sel);
+ 		return DefaultSelectLoop<NO_NULL, false, true>(idata.sel, UnifiedVectorFormat::GetData<uint8_t>(idata),
+ 		                                               idata.validity, sel, count, true_sel, false_sel);
+-	}
++	}*/
+ }
+ 
+ idx_t ExpressionExecutor::DefaultSelect(const Expression &expr, ExpressionState *state, const SelectionVector *sel,
+@@ -297,11 +300,11 @@ idx_t ExpressionExecutor::DefaultSelect(const Expression &expr, ExpressionState
  	if (!sel) {
  		sel = FlatVector::IncrementalSelectionVector();
  	}
@@ -18,3 +57,173 @@ index 716672d86a..e8d60438d9 100644
  }
  
  vector<unique_ptr<ExpressionExecutorState>> &ExpressionExecutor::GetStates() {
+diff --git a/src/include/duckdb/common/vector_operations/binary_executor.hpp b/src/include/duckdb/common/vector_operations/binary_executor.hpp
+index 936c2b42b0..410af496ae 100644
+--- a/src/include/duckdb/common/vector_operations/binary_executor.hpp
++++ b/src/include/duckdb/common/vector_operations/binary_executor.hpp
+@@ -68,10 +68,9 @@ struct BinaryLambdaWrapperWithNulls {
+ };
+ 
+ struct BinaryExecutor {
+-	template <class LEFT_TYPE, class RIGHT_TYPE, class RESULT_TYPE, class OPWRAPPER, class OP, class FUNC,
+-	          bool LEFT_CONSTANT, bool RIGHT_CONSTANT>
++	template <class LEFT_TYPE, class RIGHT_TYPE, class RESULT_TYPE, class OPWRAPPER, class OP, class FUNC>
+ 	static void ExecuteFlatLoop(const LEFT_TYPE *__restrict ldata, const RIGHT_TYPE *__restrict rdata,
+-	                            RESULT_TYPE *__restrict result_data, idx_t count, ValidityMask &mask, FUNC fun) {
++	                            RESULT_TYPE *__restrict result_data, idx_t count, ValidityMask &mask, FUNC fun, bool LEFT_CONSTANT, bool RIGHT_CONSTANT) {
+ 		if (!LEFT_CONSTANT) {
+ 			ASSERT_RESTRICT(ldata, ldata + count, result_data, result_data + count);
+ 		}
+@@ -85,21 +84,6 @@ struct BinaryExecutor {
+ 			for (idx_t entry_idx = 0; entry_idx < entry_count; entry_idx++) {
+ 				auto validity_entry = mask.GetValidityEntry(entry_idx);
+ 				idx_t next = MinValue<idx_t>(base_idx + ValidityMask::BITS_PER_VALUE, count);
+-/*				if (ValidityMask::AllValid(validity_entry)) {
+-					// all valid: perform operation
+-					for (; base_idx < next; base_idx++) {
+-						auto lentry = ldata[LEFT_CONSTANT ? 0 : base_idx];
+-						auto rentry = rdata[RIGHT_CONSTANT ? 0 : base_idx];
+-						result_data[base_idx] =
+-						    OPWRAPPER::template Operation<FUNC, OP, LEFT_TYPE, RIGHT_TYPE, RESULT_TYPE>(
+-						        fun, lentry, rentry, mask, base_idx);
+-					}
+-				} else if (ValidityMask::NoneValid(validity_entry)) {
+-					// nothing valid: skip all
+-					base_idx = next;
+-					continue;
+-				} else {
+-*/
+ {
+ 					// partially valid: need to check individual elements for validity
+ 					idx_t start = base_idx;
+@@ -174,8 +158,8 @@ struct BinaryExecutor {
+ 				result_validity.Combine(FlatVector::Validity(right), count);
+ 			}
+ 		}
+-		ExecuteFlatLoop<LEFT_TYPE, RIGHT_TYPE, RESULT_TYPE, OPWRAPPER, OP, FUNC, LEFT_CONSTANT, RIGHT_CONSTANT>(
+-		    ldata, rdata, result_data, count, result_validity, fun);
++		ExecuteFlatLoop<LEFT_TYPE, RIGHT_TYPE, RESULT_TYPE, OPWRAPPER, OP, FUNC>(
++		    ldata, rdata, result_data, count, result_validity, fun, LEFT_CONSTANT, RIGHT_CONSTANT);
+ 	}
+ 
+ 	template <class LEFT_TYPE, class RIGHT_TYPE, class RESULT_TYPE, class OPWRAPPER, class OP, class FUNC>
+@@ -296,8 +280,7 @@ public:
+ 		}
+ 	}
+ 
+-	template <class LEFT_TYPE, class RIGHT_TYPE, class OP, bool LEFT_CONSTANT, bool RIGHT_CONSTANT, bool HAS_TRUE_SEL,
+-	          bool HAS_FALSE_SEL>
++	template <class LEFT_TYPE, class RIGHT_TYPE, class OP, bool LEFT_CONSTANT, bool RIGHT_CONSTANT>
+ 	static inline idx_t SelectFlatLoop(const LEFT_TYPE *__restrict ldata, const RIGHT_TYPE *__restrict rdata,
+ 	                                   const SelectionVector *sel, idx_t count, ValidityMask &validity_mask,
+ 	                                   SelectionVector *true_sel, SelectionVector *false_sel) {
+@@ -314,18 +297,18 @@ public:
+ 					idx_t lidx = LEFT_CONSTANT ? 0 : base_idx;
+ 					idx_t ridx = RIGHT_CONSTANT ? 0 : base_idx;
+ 					bool comparison_result = OP::Operation(ldata[lidx], rdata[ridx]);
+-					if (HAS_TRUE_SEL) {
++					if (true_sel) {
+ 						true_sel->set_index(true_count, result_idx);
+ 						true_count += comparison_result;
+ 					}
+-					if (HAS_FALSE_SEL) {
++					if (false_sel) {
+ 						false_sel->set_index(false_count, result_idx);
+ 						false_count += !comparison_result;
+ 					}
+ 				}
+ 			} else if (ValidityMask::NoneValid(validity_entry)) {
+ 				// nothing valid: skip all
+-				if (HAS_FALSE_SEL) {
++				if (false_sel) {
+ 					for (; base_idx < next; base_idx++) {
+ 						idx_t result_idx = sel->get_index(base_idx);
+ 						false_sel->set_index(false_count, result_idx);
+@@ -343,18 +326,18 @@ public:
+ 					idx_t ridx = RIGHT_CONSTANT ? 0 : base_idx;
+ 					bool comparison_result = ValidityMask::RowIsValid(validity_entry, base_idx - start) &&
+ 					                         OP::Operation(ldata[lidx], rdata[ridx]);
+-					if (HAS_TRUE_SEL) {
++					if (true_sel) {
+ 						true_sel->set_index(true_count, result_idx);
+ 						true_count += comparison_result;
+ 					}
+-					if (HAS_FALSE_SEL) {
++					if (false_sel) {
+ 						false_sel->set_index(false_count, result_idx);
+ 						false_count += !comparison_result;
+ 					}
+ 				}
+ 			}
+ 		}
+-		if (HAS_TRUE_SEL) {
++		if (true_sel) {
+ 			return true_count;
+ 		} else {
+ 			return count - false_count;
+@@ -366,16 +349,12 @@ public:
+ 	                                         const SelectionVector *sel, idx_t count, ValidityMask &mask,
+ 	                                         SelectionVector *true_sel, SelectionVector *false_sel) {
+ 		if (true_sel && false_sel) {
+-			return SelectFlatLoop<LEFT_TYPE, RIGHT_TYPE, OP, LEFT_CONSTANT, RIGHT_CONSTANT, true, true>(
+-			    ldata, rdata, sel, count, mask, true_sel, false_sel);
+ 		} else if (true_sel) {
+-			return SelectFlatLoop<LEFT_TYPE, RIGHT_TYPE, OP, LEFT_CONSTANT, RIGHT_CONSTANT, true, false>(
+-			    ldata, rdata, sel, count, mask, true_sel, false_sel);
+ 		} else {
+ 			D_ASSERT(false_sel);
+-			return SelectFlatLoop<LEFT_TYPE, RIGHT_TYPE, OP, LEFT_CONSTANT, RIGHT_CONSTANT, false, true>(
+-			    ldata, rdata, sel, count, mask, true_sel, false_sel);
+ 		}
++			return SelectFlatLoop<LEFT_TYPE, RIGHT_TYPE, OP, LEFT_CONSTANT, RIGHT_CONSTANT>(
++			    ldata, rdata, sel, count, mask, true_sel, false_sel);
+ 	}
+ 
+ 	template <class LEFT_TYPE, class RIGHT_TYPE, class OP, bool LEFT_CONSTANT, bool RIGHT_CONSTANT>
+@@ -415,7 +394,7 @@ public:
+ 		}
+ 	}
+ 
+-	template <class LEFT_TYPE, class RIGHT_TYPE, class OP, bool NO_NULL, bool HAS_TRUE_SEL, bool HAS_FALSE_SEL>
++	template <class LEFT_TYPE, class RIGHT_TYPE, class OP, bool NO_NULL>
+ 	static inline idx_t
+ 	SelectGenericLoop(const LEFT_TYPE *__restrict ldata, const RIGHT_TYPE *__restrict rdata,
+ 	                  const SelectionVector *__restrict lsel, const SelectionVector *__restrict rsel,
+@@ -428,16 +407,16 @@ public:
+ 			auto rindex = rsel->get_index(i);
+ 			if ((NO_NULL || (lvalidity.RowIsValid(lindex) && rvalidity.RowIsValid(rindex))) &&
+ 			    OP::Operation(ldata[lindex], rdata[rindex])) {
+-				if (HAS_TRUE_SEL) {
++				if (true_sel) {
+ 					true_sel->set_index(true_count++, result_idx);
+ 				}
+ 			} else {
+-				if (HAS_FALSE_SEL) {
++				if (false_sel) {
+ 					false_sel->set_index(false_count++, result_idx);
+ 				}
+ 			}
+ 		}
+-		if (HAS_TRUE_SEL) {
++		if (true_sel) {
+ 			return true_count;
+ 		} else {
+ 			return count - false_count;
+@@ -450,14 +429,14 @@ public:
+ 	                           const SelectionVector *__restrict result_sel, idx_t count, ValidityMask &lvalidity,
+ 	                           ValidityMask &rvalidity, SelectionVector *true_sel, SelectionVector *false_sel) {
+ 		if (true_sel && false_sel) {
+-			return SelectGenericLoop<LEFT_TYPE, RIGHT_TYPE, OP, NO_NULL, true, true>(
++			return SelectGenericLoop<LEFT_TYPE, RIGHT_TYPE, OP, NO_NULL>(
+ 			    ldata, rdata, lsel, rsel, result_sel, count, lvalidity, rvalidity, true_sel, false_sel);
+ 		} else if (true_sel) {
+-			return SelectGenericLoop<LEFT_TYPE, RIGHT_TYPE, OP, NO_NULL, true, false>(
++			return SelectGenericLoop<LEFT_TYPE, RIGHT_TYPE, OP, NO_NULL>(
+ 			    ldata, rdata, lsel, rsel, result_sel, count, lvalidity, rvalidity, true_sel, false_sel);
+ 		} else {
+ 			D_ASSERT(false_sel);
+-			return SelectGenericLoop<LEFT_TYPE, RIGHT_TYPE, OP, NO_NULL, false, true>(
++			return SelectGenericLoop<LEFT_TYPE, RIGHT_TYPE, OP, NO_NULL>(
+ 			    ldata, rdata, lsel, rsel, result_sel, count, lvalidity, rvalidity, true_sel, false_sel);
+ 		}
+ 	}
