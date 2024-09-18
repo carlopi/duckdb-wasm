@@ -1,0 +1,56 @@
+diff --git a/src/common/vector_operations/is_distinct_from.cpp b/src/common/vector_operations/is_distinct_from.cpp
+index 900ea95306..d669ef425a 100644
+--- a/src/common/vector_operations/is_distinct_from.cpp
++++ b/src/common/vector_operations/is_distinct_from.cpp
+@@ -284,7 +284,7 @@ static idx_t DistinctSelect(Vector &left, Vector &right, const SelectionVector *
+ 		UpdateNullMask(left, *sel, count, *null_mask);
+ 		UpdateNullMask(right, *sel, count, *null_mask);
+ 	}
+-
++/*
+ 	if (left.GetVectorType() == VectorType::CONSTANT_VECTOR && right.GetVectorType() == VectorType::CONSTANT_VECTOR) {
+ 		return DistinctSelectConstant<LEFT_TYPE, RIGHT_TYPE, OP>(left, right, sel, count, true_sel, false_sel);
+ 	} else if (left.GetVectorType() == VectorType::CONSTANT_VECTOR &&
+@@ -296,7 +296,9 @@ static idx_t DistinctSelect(Vector &left, Vector &right, const SelectionVector *
+ 	} else if (left.GetVectorType() == VectorType::FLAT_VECTOR && right.GetVectorType() == VectorType::FLAT_VECTOR) {
+ 		return DistinctSelectFlat<LEFT_TYPE, RIGHT_TYPE, OP, false, false>(left, right, sel, count, true_sel,
+ 		                                                                   false_sel);
+-	} else {
++	} else
++*/
++	{
+ 		return DistinctSelectGeneric<LEFT_TYPE, RIGHT_TYPE, OP>(left, right, sel, count, true_sel, false_sel);
+ 	}
+ }
+diff --git a/src/include/duckdb/common/vector_operations/aggregate_executor.hpp b/src/include/duckdb/common/vector_operations/aggregate_executor.hpp
+index 87895f7b2a..a8a52ab688 100644
+--- a/src/include/duckdb/common/vector_operations/aggregate_executor.hpp
++++ b/src/include/duckdb/common/vector_operations/aggregate_executor.hpp
+@@ -230,9 +230,9 @@ public:
+ 		if (states.GetVectorType() == VectorType::CONSTANT_VECTOR) {
+ 			auto sdata = ConstantVector::GetData<STATE_TYPE *>(states);
+ 			OP::template ConstantOperation<STATE_TYPE, OP>(**sdata, aggr_input_data, count);
+-		} else if (states.GetVectorType() == VectorType::FLAT_VECTOR) {
+-			auto sdata = FlatVector::GetData<STATE_TYPE *>(states);
+-			NullaryFlatLoop<STATE_TYPE, OP>(sdata, aggr_input_data, count);
++//		} else if (states.GetVectorType() == VectorType::FLAT_VECTOR) {
++//			auto sdata = FlatVector::GetData<STATE_TYPE *>(states);
++//			NullaryFlatLoop<STATE_TYPE, OP>(sdata, aggr_input_data, count);
+ 		} else {
+ 			UnifiedVectorFormat sdata;
+ 			states.ToUnifiedFormat(count, sdata);
+@@ -258,12 +258,13 @@ public:
+ 			auto sdata = ConstantVector::GetData<STATE_TYPE *>(states);
+ 			AggregateUnaryInput input_data(aggr_input_data, ConstantVector::Validity(input));
+ 			OP::template ConstantOperation<INPUT_TYPE, STATE_TYPE, OP>(**sdata, *idata, input_data, count);
+-		} else if (input.GetVectorType() == VectorType::FLAT_VECTOR &&
++/*		} else if (input.GetVectorType() == VectorType::FLAT_VECTOR &&
+ 		           states.GetVectorType() == VectorType::FLAT_VECTOR) {
+ 			auto idata = FlatVector::GetData<INPUT_TYPE>(input);
+ 			auto sdata = FlatVector::GetData<STATE_TYPE *>(states);
+ 			UnaryFlatLoop<STATE_TYPE, INPUT_TYPE, OP>(idata, aggr_input_data, sdata, FlatVector::Validity(input),
+ 			                                          count);
++*/
+ 		} else {
+ 			UnifiedVectorFormat idata, sdata;
+ 			input.ToUnifiedFormat(count, idata);
