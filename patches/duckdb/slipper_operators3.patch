@@ -1,0 +1,20 @@
+diff --git a/src/execution/expression_executor.cpp b/src/execution/expression_executor.cpp
+index 716672d86a..e8d60438d9 100644
+--- a/src/execution/expression_executor.cpp
++++ b/src/execution/expression_executor.cpp
+@@ -297,11 +297,11 @@ idx_t ExpressionExecutor::DefaultSelect(const Expression &expr, ExpressionState
+ 	if (!sel) {
+ 		sel = FlatVector::IncrementalSelectionVector();
+ 	}
+-	if (!idata.validity.AllValid()) {
+ 		return DefaultSelectSwitch<false>(idata, sel, count, true_sel, false_sel);
+-	} else {
+-		return DefaultSelectSwitch<true>(idata, sel, count, true_sel, false_sel);
+-	}
++//	if (!idata.validity.AllValid()) {
++//	} else {
++//		return DefaultSelectSwitch<true>(idata, sel, count, true_sel, false_sel);
++//	}
+ }
+ 
+ vector<unique_ptr<ExpressionExecutorState>> &ExpressionExecutor::GetStates() {
