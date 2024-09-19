@@ -19,7 +19,7 @@ CORES=$(grep -c ^processor /proc/cpuinfo 2>/dev/null || sysctl -n hw.ncpu)
 
 ADDITIONAL_FLAGS=
 SUFFIX=
-LINK_FLAGS=
+LINK_FLAGS="-flto"
 case $MODE in
   "debug") ADDITIONAL_FLAGS="-DCMAKE_BUILD_TYPE=Debug -DWASM_FAST_LINKING=1" ;;
   "dev") ADDITIONAL_FLAGS="-DCMAKE_BUILD_TYPE=RelWithDebInfo -DWASM_FAST_LINKING=1" ;;
@@ -39,7 +39,7 @@ case $FEATURES in
   "coi")
     ADDITIONAL_FLAGS="${ADDITIONAL_FLAGS} -DWITH_WASM_EXCEPTIONS=1 -DWITH_WASM_THREADS=1 -DWITH_WASM_SIMD=1 -DWITH_WASM_BULK_MEMORY=1 -DDUCKDB_CUSTOM_PLATFORM=wasm_threads -DDUCKDB_EXPLICIT_PLATFORM=wasm_threads"
     SUFFIX="-coi"
-    LINK_FLAGS="-pthread -sSHARED_MEMORY=1"
+    LINK_FLAGS="${LINK_FLAGS} -pthread -sSHARED_MEMORY=1"
     ;;
    *) ;;
 esac
@@ -69,7 +69,6 @@ emmake make \
     -j${CORES} \
     duckdb_wasm
 
-npm install -g js-beautify
 js-beautify ${BUILD_DIR}/duckdb_wasm.js > ${BUILD_DIR}/beauty.js
 awk '!(/var .*wasmExports\[/ || /var [_a-z0-9A-Z]+ = Module\[\"[_a-z0-9A-Z]+\"\] = [0-9]+;/) || /var _duckdb_web/ || /var _main/ || /var _malloc/ || /var _free/ || /var stack/ || /var ___dl_seterr/ || /var __em/ || /var _em/ || /var _pthread/' ${BUILD_DIR}/beauty.js > ${BUILD_DIR}/duckdb_wasm.js
 
