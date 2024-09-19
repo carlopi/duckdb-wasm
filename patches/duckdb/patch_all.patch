@@ -385,7 +385,7 @@ index 87895f7b2a..a8a52ab688 100644
  			UnifiedVectorFormat idata, sdata;
  			input.ToUnifiedFormat(count, idata);
 diff --git a/src/include/duckdb/common/vector_operations/binary_executor.hpp b/src/include/duckdb/common/vector_operations/binary_executor.hpp
-index 55c10bb289..a6c9c63be4 100644
+index 55c10bb289..816d664a5f 100644
 --- a/src/include/duckdb/common/vector_operations/binary_executor.hpp
 +++ b/src/include/duckdb/common/vector_operations/binary_executor.hpp
 @@ -68,10 +68,9 @@ struct BinaryLambdaWrapperWithNulls {
@@ -444,7 +444,19 @@ index 55c10bb289..a6c9c63be4 100644
  		}
  	}
  
-@@ -179,8 +158,8 @@ struct BinaryExecutor {
+@@ -138,9 +117,8 @@ struct BinaryExecutor {
+ 		    fun, *ldata, *rdata, ConstantVector::Validity(result), 0);
+ 	}
+ 
+-	template <class LEFT_TYPE, class RIGHT_TYPE, class RESULT_TYPE, class OPWRAPPER, class OP, class FUNC,
+-	          bool LEFT_CONSTANT, bool RIGHT_CONSTANT>
+-	static void ExecuteFlat(Vector &left, Vector &right, Vector &result, idx_t count, FUNC fun) {
++	template <class LEFT_TYPE, class RIGHT_TYPE, class RESULT_TYPE, class OPWRAPPER, class OP, class FUNC>
++	static void ExecuteFlat(Vector &left, Vector &right, Vector &result, idx_t count, FUNC fun, bool LEFT_CONSTANT, bool RIGHT_CONSTANT) {
+ 		auto ldata = FlatVector::GetData<LEFT_TYPE>(left);
+ 		auto rdata = FlatVector::GetData<RIGHT_TYPE>(right);
+ 
+@@ -179,8 +157,8 @@ struct BinaryExecutor {
  				result_validity.Combine(FlatVector::Validity(right), count);
  			}
  		}
@@ -455,7 +467,7 @@ index 55c10bb289..a6c9c63be4 100644
  	}
  
  	template <class LEFT_TYPE, class RIGHT_TYPE, class RESULT_TYPE, class OPWRAPPER, class OP, class FUNC>
-@@ -188,7 +167,8 @@ struct BinaryExecutor {
+@@ -188,7 +166,8 @@ struct BinaryExecutor {
  	                               RESULT_TYPE *__restrict result_data, const SelectionVector *__restrict lsel,
  	                               const SelectionVector *__restrict rsel, idx_t count, ValidityMask &lvalidity,
  	                               ValidityMask &rvalidity, ValidityMask &result_validity, FUNC fun) {
@@ -465,7 +477,7 @@ index 55c10bb289..a6c9c63be4 100644
  			for (idx_t i = 0; i < count; i++) {
  				auto lindex = lsel->get_index(i);
  				auto rindex = rsel->get_index(i);
-@@ -201,13 +181,14 @@ struct BinaryExecutor {
+@@ -201,13 +180,14 @@ struct BinaryExecutor {
  					result_validity.SetInvalid(i);
  				}
  			}
@@ -481,7 +493,28 @@ index 55c10bb289..a6c9c63be4 100644
  		}
  	}
  
-@@ -299,11 +280,10 @@ public:
+@@ -233,14 +213,14 @@ struct BinaryExecutor {
+ 		if (left_vector_type == VectorType::CONSTANT_VECTOR && right_vector_type == VectorType::CONSTANT_VECTOR) {
+ 			ExecuteConstant<LEFT_TYPE, RIGHT_TYPE, RESULT_TYPE, OPWRAPPER, OP, FUNC>(left, right, result, fun);
+ 		} else if (left_vector_type == VectorType::FLAT_VECTOR && right_vector_type == VectorType::CONSTANT_VECTOR) {
+-			ExecuteFlat<LEFT_TYPE, RIGHT_TYPE, RESULT_TYPE, OPWRAPPER, OP, FUNC, false, true>(left, right, result,
+-			                                                                                  count, fun);
++			ExecuteFlat<LEFT_TYPE, RIGHT_TYPE, RESULT_TYPE, OPWRAPPER, OP, FUNC>(left, right, result,
++			                                                                                  count, fun, false, true);
+ 		} else if (left_vector_type == VectorType::CONSTANT_VECTOR && right_vector_type == VectorType::FLAT_VECTOR) {
+-			ExecuteFlat<LEFT_TYPE, RIGHT_TYPE, RESULT_TYPE, OPWRAPPER, OP, FUNC, true, false>(left, right, result,
+-			                                                                                  count, fun);
++			ExecuteFlat<LEFT_TYPE, RIGHT_TYPE, RESULT_TYPE, OPWRAPPER, OP, FUNC>(left, right, result,
++			                                                                                  count, fun, true, false);
+ 		} else if (left_vector_type == VectorType::FLAT_VECTOR && right_vector_type == VectorType::FLAT_VECTOR) {
+-			ExecuteFlat<LEFT_TYPE, RIGHT_TYPE, RESULT_TYPE, OPWRAPPER, OP, FUNC, false, false>(left, right, result,
+-			                                                                                   count, fun);
++			ExecuteFlat<LEFT_TYPE, RIGHT_TYPE, RESULT_TYPE, OPWRAPPER, OP, FUNC>(left, right, result,
++			                                                                                   count, fun, false, false);
+ 		} else {
+ 			ExecuteGeneric<LEFT_TYPE, RIGHT_TYPE, RESULT_TYPE, OPWRAPPER, OP, FUNC>(left, right, result, count, fun);
+ 		}
+@@ -299,11 +279,10 @@ public:
  		}
  	}
  
@@ -495,7 +528,7 @@ index 55c10bb289..a6c9c63be4 100644
  		idx_t true_count = 0, false_count = 0;
  		idx_t base_idx = 0;
  		auto entry_count = ValidityMask::EntryCount(count);
-@@ -317,18 +297,18 @@ public:
+@@ -317,18 +296,18 @@ public:
  					idx_t lidx = LEFT_CONSTANT ? 0 : base_idx;
  					idx_t ridx = RIGHT_CONSTANT ? 0 : base_idx;
  					bool comparison_result = OP::Operation(ldata[lidx], rdata[ridx]);
@@ -517,7 +550,7 @@ index 55c10bb289..a6c9c63be4 100644
  					for (; base_idx < next; base_idx++) {
  						idx_t result_idx = sel->get_index(base_idx);
  						false_sel->set_index(false_count, result_idx);
-@@ -346,44 +326,40 @@ public:
+@@ -346,44 +325,40 @@ public:
  					idx_t ridx = RIGHT_CONSTANT ? 0 : base_idx;
  					bool comparison_result = ValidityMask::RowIsValid(validity_entry, base_idx - start) &&
  					                         OP::Operation(ldata[lidx], rdata[ridx]);
@@ -571,7 +604,7 @@ index 55c10bb289..a6c9c63be4 100644
  		auto ldata = FlatVector::GetData<LEFT_TYPE>(left);
  		auto rdata = FlatVector::GetData<RIGHT_TYPE>(right);
  
-@@ -405,25 +381,25 @@ public:
+@@ -405,25 +380,25 @@ public:
  		}
  
  		if (LEFT_CONSTANT) {
@@ -605,7 +638,7 @@ index 55c10bb289..a6c9c63be4 100644
  		idx_t true_count = 0, false_count = 0;
  		for (idx_t i = 0; i < count; i++) {
  			auto result_idx = result_sel->get_index(i);
-@@ -431,37 +407,37 @@ public:
+@@ -431,37 +406,37 @@ public:
  			auto rindex = rsel->get_index(i);
  			if ((NO_NULL || (lvalidity.RowIsValid(lindex) && rvalidity.RowIsValid(rindex))) &&
  			    OP::Operation(ldata[lindex], rdata[rindex])) {
@@ -654,7 +687,7 @@ index 55c10bb289..a6c9c63be4 100644
  		}
  	}
  
-@@ -472,11 +448,11 @@ public:
+@@ -472,11 +447,11 @@ public:
  	                        const SelectionVector *__restrict result_sel, idx_t count, ValidityMask &lvalidity,
  	                        ValidityMask &rvalidity, SelectionVector *true_sel, SelectionVector *false_sel) {
  		if (!lvalidity.AllValid() || !rvalidity.AllValid()) {
@@ -670,7 +703,7 @@ index 55c10bb289..a6c9c63be4 100644
  		}
  	}
  
-@@ -504,13 +480,13 @@ public:
+@@ -504,13 +479,13 @@ public:
  			return SelectConstant<LEFT_TYPE, RIGHT_TYPE, OP>(left, right, sel, count, true_sel, false_sel);
  		} else if (left.GetVectorType() == VectorType::CONSTANT_VECTOR &&
  		           right.GetVectorType() == VectorType::FLAT_VECTOR) {
