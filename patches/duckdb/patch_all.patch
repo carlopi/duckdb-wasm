@@ -1,0 +1,1269 @@
+diff --git a/src/common/vector_operations/boolean_operators.cpp b/src/common/vector_operations/boolean_operators.cpp
+index 667c920858..718ba193bf 100644
+--- a/src/common/vector_operations/boolean_operators.cpp
++++ b/src/common/vector_operations/boolean_operators.cpp
+@@ -39,7 +39,8 @@ static void TemplatedBooleanNullmask(Vector &left, Vector &right, Vector &result
+ 		auto right_data = UnifiedVectorFormat::GetData<uint8_t>(rdata);
+ 		auto result_data = FlatVector::GetData<bool>(result);
+ 		auto &result_mask = FlatVector::Validity(result);
+-		if (!ldata.validity.AllValid() || !rdata.validity.AllValid()) {
++	//	if (!ldata.validity.AllValid() || !rdata.validity.AllValid()) {
++		{
+ 			for (idx_t i = 0; i < count; i++) {
+ 				auto lidx = ldata.sel->get_index(i);
+ 				auto ridx = rdata.sel->get_index(i);
+@@ -48,12 +49,12 @@ static void TemplatedBooleanNullmask(Vector &left, Vector &right, Vector &result
+ 				                  !rdata.validity.RowIsValid(ridx), result_data[i]);
+ 				result_mask.Set(i, !is_null);
+ 			}
+-		} else {
+-			for (idx_t i = 0; i < count; i++) {
+-				auto lidx = ldata.sel->get_index(i);
+-				auto ridx = rdata.sel->get_index(i);
+-				result_data[i] = OP::SimpleOperation(left_data[lidx], right_data[ridx]);
+-			}
++//		} else {
++//			for (idx_t i = 0; i < count; i++) {
++//				auto lidx = ldata.sel->get_index(i);
++//				auto ridx = rdata.sel->get_index(i);
++//				result_data[i] = OP::SimpleOperation(left_data[lidx], right_data[ridx]);
++//			}
+ 		}
+ 	}
+ }
+diff --git a/src/common/vector_operations/is_distinct_from.cpp b/src/common/vector_operations/is_distinct_from.cpp
+index e9a31ee0e6..ee15ffbf37 100644
+--- a/src/common/vector_operations/is_distinct_from.cpp
++++ b/src/common/vector_operations/is_distinct_from.cpp
+@@ -65,12 +65,12 @@ static void DistinctExecute(Vector &left, Vector &right, Vector &result, idx_t c
+ 	DistinctExecuteSwitch<LEFT_TYPE, RIGHT_TYPE, RESULT_TYPE, OP>(left, right, result, count);
+ }
+ 
+-template <class LEFT_TYPE, class RIGHT_TYPE, class OP, bool NO_NULL, bool HAS_TRUE_SEL, bool HAS_FALSE_SEL>
++template <class LEFT_TYPE, class RIGHT_TYPE, class OP>
+ static inline idx_t
+ DistinctSelectGenericLoop(const LEFT_TYPE *__restrict ldata, const RIGHT_TYPE *__restrict rdata,
+                           const SelectionVector *__restrict lsel, const SelectionVector *__restrict rsel,
+                           const SelectionVector *__restrict result_sel, idx_t count, ValidityMask &lmask,
+-                          ValidityMask &rmask, SelectionVector *true_sel, SelectionVector *false_sel) {
++                          ValidityMask &rmask, SelectionVector *true_sel, SelectionVector *false_sel, bool NO_NULL) {
+ 	idx_t true_count = 0, false_count = 0;
+ 	for (idx_t i = 0; i < count; i++) {
+ 		auto result_idx = result_sel->get_index(i);
+@@ -78,49 +78,45 @@ DistinctSelectGenericLoop(const LEFT_TYPE *__restrict ldata, const RIGHT_TYPE *_
+ 		auto rindex = rsel->get_index(i);
+ 		if (NO_NULL) {
+ 			if (OP::Operation(ldata[lindex], rdata[rindex], false, false)) {
+-				if (HAS_TRUE_SEL) {
++				if (true_sel) {
+ 					true_sel->set_index(true_count++, result_idx);
+ 				}
+ 			} else {
+-				if (HAS_FALSE_SEL) {
++				if (false_sel) {
+ 					false_sel->set_index(false_count++, result_idx);
+ 				}
+ 			}
+ 		} else {
+ 			if (OP::Operation(ldata[lindex], rdata[rindex], !lmask.RowIsValid(lindex), !rmask.RowIsValid(rindex))) {
+-				if (HAS_TRUE_SEL) {
++				if (true_sel) {
+ 					true_sel->set_index(true_count++, result_idx);
+ 				}
+ 			} else {
+-				if (HAS_FALSE_SEL) {
++				if (false_sel) {
+ 					false_sel->set_index(false_count++, result_idx);
+ 				}
+ 			}
+ 		}
+ 	}
+-	if (HAS_TRUE_SEL) {
++	if (true_sel) {
+ 		return true_count;
+ 	} else {
+ 		return count - false_count;
+ 	}
+ }
+-template <class LEFT_TYPE, class RIGHT_TYPE, class OP, bool NO_NULL>
++template <class LEFT_TYPE, class RIGHT_TYPE, class OP>
+ static inline idx_t
+ DistinctSelectGenericLoopSelSwitch(const LEFT_TYPE *__restrict ldata, const RIGHT_TYPE *__restrict rdata,
+                                    const SelectionVector *__restrict lsel, const SelectionVector *__restrict rsel,
+                                    const SelectionVector *__restrict result_sel, idx_t count, ValidityMask &lmask,
+-                                   ValidityMask &rmask, SelectionVector *true_sel, SelectionVector *false_sel) {
++                                   ValidityMask &rmask, SelectionVector *true_sel, SelectionVector *false_sel, bool NO_NULL) {
+ 	if (true_sel && false_sel) {
+-		return DistinctSelectGenericLoop<LEFT_TYPE, RIGHT_TYPE, OP, NO_NULL, true, true>(
+-		    ldata, rdata, lsel, rsel, result_sel, count, lmask, rmask, true_sel, false_sel);
+ 	} else if (true_sel) {
+-		return DistinctSelectGenericLoop<LEFT_TYPE, RIGHT_TYPE, OP, NO_NULL, true, false>(
+-		    ldata, rdata, lsel, rsel, result_sel, count, lmask, rmask, true_sel, false_sel);
+ 	} else {
+ 		D_ASSERT(false_sel);
+-		return DistinctSelectGenericLoop<LEFT_TYPE, RIGHT_TYPE, OP, NO_NULL, false, true>(
+-		    ldata, rdata, lsel, rsel, result_sel, count, lmask, rmask, true_sel, false_sel);
+ 	}
++		return DistinctSelectGenericLoop<LEFT_TYPE, RIGHT_TYPE, OP>(
++		    ldata, rdata, lsel, rsel, result_sel, count, lmask, rmask, true_sel, false_sel, NO_NULL);
+ }
+ 
+ template <class LEFT_TYPE, class RIGHT_TYPE, class OP>
+@@ -130,11 +126,11 @@ DistinctSelectGenericLoopSwitch(const LEFT_TYPE *__restrict ldata, const RIGHT_T
+                                 const SelectionVector *__restrict result_sel, idx_t count, ValidityMask &lmask,
+                                 ValidityMask &rmask, SelectionVector *true_sel, SelectionVector *false_sel) {
+ 	if (!lmask.AllValid() || !rmask.AllValid()) {
+-		return DistinctSelectGenericLoopSelSwitch<LEFT_TYPE, RIGHT_TYPE, OP, false>(
+-		    ldata, rdata, lsel, rsel, result_sel, count, lmask, rmask, true_sel, false_sel);
++		return DistinctSelectGenericLoopSelSwitch<LEFT_TYPE, RIGHT_TYPE, OP>(
++		    ldata, rdata, lsel, rsel, result_sel, count, lmask, rmask, true_sel, false_sel, false);
+ 	} else {
+-		return DistinctSelectGenericLoopSelSwitch<LEFT_TYPE, RIGHT_TYPE, OP, true>(
+-		    ldata, rdata, lsel, rsel, result_sel, count, lmask, rmask, true_sel, false_sel);
++		return DistinctSelectGenericLoopSelSwitch<LEFT_TYPE, RIGHT_TYPE, OP>(
++		    ldata, rdata, lsel, rsel, result_sel, count, lmask, rmask, true_sel, false_sel, true);
+ 	}
+ }
+ 
+@@ -150,11 +146,10 @@ static idx_t DistinctSelectGeneric(Vector &left, Vector &right, const SelectionV
+ 	    UnifiedVectorFormat::GetData<LEFT_TYPE>(ldata), UnifiedVectorFormat::GetData<RIGHT_TYPE>(rdata), ldata.sel,
+ 	    rdata.sel, sel, count, ldata.validity, rdata.validity, true_sel, false_sel);
+ }
+-template <class LEFT_TYPE, class RIGHT_TYPE, class OP, bool LEFT_CONSTANT, bool RIGHT_CONSTANT, bool NO_NULL,
+-          bool HAS_TRUE_SEL, bool HAS_FALSE_SEL>
++template <class LEFT_TYPE, class RIGHT_TYPE, class OP, bool LEFT_CONSTANT, bool RIGHT_CONSTANT>
+ static inline idx_t DistinctSelectFlatLoop(LEFT_TYPE *__restrict ldata, RIGHT_TYPE *__restrict rdata,
+                                            const SelectionVector *sel, idx_t count, ValidityMask &lmask,
+-                                           ValidityMask &rmask, SelectionVector *true_sel, SelectionVector *false_sel) {
++                                           ValidityMask &rmask, SelectionVector *true_sel, SelectionVector *false_sel, bool NO_NULL) {
+ 	idx_t true_count = 0, false_count = 0;
+ 	for (idx_t i = 0; i < count; i++) {
+ 		idx_t result_idx = sel->get_index(i);
+@@ -163,38 +158,34 @@ static inline idx_t DistinctSelectFlatLoop(LEFT_TYPE *__restrict ldata, RIGHT_TY
+ 		const bool lnull = !lmask.RowIsValid(lidx);
+ 		const bool rnull = !rmask.RowIsValid(ridx);
+ 		bool comparison_result = OP::Operation(ldata[lidx], rdata[ridx], lnull, rnull);
+-		if (HAS_TRUE_SEL) {
++		if (true_sel) {
+ 			true_sel->set_index(true_count, result_idx);
+ 			true_count += comparison_result;
+ 		}
+-		if (HAS_FALSE_SEL) {
++		if (false_sel) {
+ 			false_sel->set_index(false_count, result_idx);
+ 			false_count += !comparison_result;
+ 		}
+ 	}
+-	if (HAS_TRUE_SEL) {
++	if (true_sel) {
+ 		return true_count;
+ 	} else {
+ 		return count - false_count;
+ 	}
+ }
+ 
+-template <class LEFT_TYPE, class RIGHT_TYPE, class OP, bool LEFT_CONSTANT, bool RIGHT_CONSTANT, bool NO_NULL>
++template <class LEFT_TYPE, class RIGHT_TYPE, class OP, bool LEFT_CONSTANT, bool RIGHT_CONSTANT>
+ static inline idx_t DistinctSelectFlatLoopSelSwitch(LEFT_TYPE *__restrict ldata, RIGHT_TYPE *__restrict rdata,
+                                                     const SelectionVector *sel, idx_t count, ValidityMask &lmask,
+                                                     ValidityMask &rmask, SelectionVector *true_sel,
+-                                                    SelectionVector *false_sel) {
++                                                    SelectionVector *false_sel, bool NO_NULL) {
+ 	if (true_sel && false_sel) {
+-		return DistinctSelectFlatLoop<LEFT_TYPE, RIGHT_TYPE, OP, LEFT_CONSTANT, RIGHT_CONSTANT, NO_NULL, true, true>(
+-		    ldata, rdata, sel, count, lmask, rmask, true_sel, false_sel);
+ 	} else if (true_sel) {
+-		return DistinctSelectFlatLoop<LEFT_TYPE, RIGHT_TYPE, OP, LEFT_CONSTANT, RIGHT_CONSTANT, NO_NULL, true, false>(
+-		    ldata, rdata, sel, count, lmask, rmask, true_sel, false_sel);
+ 	} else {
+ 		D_ASSERT(false_sel);
+-		return DistinctSelectFlatLoop<LEFT_TYPE, RIGHT_TYPE, OP, LEFT_CONSTANT, RIGHT_CONSTANT, NO_NULL, false, true>(
+-		    ldata, rdata, sel, count, lmask, rmask, true_sel, false_sel);
+ 	}
++		return DistinctSelectFlatLoop<LEFT_TYPE, RIGHT_TYPE, OP, LEFT_CONSTANT, RIGHT_CONSTANT>(
++		    ldata, rdata, sel, count, lmask, rmask, true_sel, false_sel, NO_NULL);
+ }
+ 
+ template <class LEFT_TYPE, class RIGHT_TYPE, class OP, bool LEFT_CONSTANT, bool RIGHT_CONSTANT>
+@@ -284,7 +275,7 @@ static idx_t DistinctSelect(Vector &left, Vector &right, const SelectionVector *
+ 		UpdateNullMask(left, *sel, count, *null_mask);
+ 		UpdateNullMask(right, *sel, count, *null_mask);
+ 	}
+-
++/*
+ 	if (left.GetVectorType() == VectorType::CONSTANT_VECTOR && right.GetVectorType() == VectorType::CONSTANT_VECTOR) {
+ 		return DistinctSelectConstant<LEFT_TYPE, RIGHT_TYPE, OP>(left, right, sel, count, true_sel, false_sel);
+ 	} else if (left.GetVectorType() == VectorType::CONSTANT_VECTOR &&
+@@ -296,7 +287,9 @@ static idx_t DistinctSelect(Vector &left, Vector &right, const SelectionVector *
+ 	} else if (left.GetVectorType() == VectorType::FLAT_VECTOR && right.GetVectorType() == VectorType::FLAT_VECTOR) {
+ 		return DistinctSelectFlat<LEFT_TYPE, RIGHT_TYPE, OP, false, false>(left, right, sel, count, true_sel,
+ 		                                                                   false_sel);
+-	} else {
++	} else
++*/
++	{
+ 		return DistinctSelectGeneric<LEFT_TYPE, RIGHT_TYPE, OP>(left, right, sel, count, true_sel, false_sel);
+ 	}
+ }
+diff --git a/src/execution/expression_executor.cpp b/src/execution/expression_executor.cpp
+index 716672d86a..18cb5a9a45 100644
+--- a/src/execution/expression_executor.cpp
++++ b/src/execution/expression_executor.cpp
+@@ -241,45 +241,39 @@ idx_t ExpressionExecutor::Select(const Expression &expr, ExpressionState *state,
+ 	}
+ }
+ 
+-template <bool NO_NULL, bool HAS_TRUE_SEL, bool HAS_FALSE_SEL>
+ static inline idx_t DefaultSelectLoop(const SelectionVector *bsel, const uint8_t *__restrict bdata, ValidityMask &mask,
+                                       const SelectionVector *sel, idx_t count, SelectionVector *true_sel,
+-                                      SelectionVector *false_sel) {
++                                      SelectionVector *false_sel, bool NO_NULL) {
+ 	idx_t true_count = 0, false_count = 0;
+ 	for (idx_t i = 0; i < count; i++) {
+ 		auto bidx = bsel->get_index(i);
+ 		auto result_idx = sel->get_index(i);
+ 		if ((NO_NULL || mask.RowIsValid(bidx)) && bdata[bidx] > 0) {
+-			if (HAS_TRUE_SEL) {
++			if (true_sel) {
+ 				true_sel->set_index(true_count++, result_idx);
+ 			}
+ 		} else {
+-			if (HAS_FALSE_SEL) {
++			if (false_sel) {
+ 				false_sel->set_index(false_count++, result_idx);
+ 			}
+ 		}
+ 	}
+-	if (HAS_TRUE_SEL) {
++	if (true_sel) {
+ 		return true_count;
+ 	} else {
+ 		return count - false_count;
+ 	}
+ }
+ 
+-template <bool NO_NULL>
+ static inline idx_t DefaultSelectSwitch(UnifiedVectorFormat &idata, const SelectionVector *sel, idx_t count,
+-                                        SelectionVector *true_sel, SelectionVector *false_sel) {
++                                        SelectionVector *true_sel, SelectionVector *false_sel, bool NO_NULL) {
+ 	if (true_sel && false_sel) {
+-		return DefaultSelectLoop<NO_NULL, true, true>(idata.sel, UnifiedVectorFormat::GetData<uint8_t>(idata),
+-		                                              idata.validity, sel, count, true_sel, false_sel);
+ 	} else if (true_sel) {
+-		return DefaultSelectLoop<NO_NULL, true, false>(idata.sel, UnifiedVectorFormat::GetData<uint8_t>(idata),
+-		                                               idata.validity, sel, count, true_sel, false_sel);
+ 	} else {
+ 		D_ASSERT(false_sel);
+-		return DefaultSelectLoop<NO_NULL, false, true>(idata.sel, UnifiedVectorFormat::GetData<uint8_t>(idata),
+-		                                               idata.validity, sel, count, true_sel, false_sel);
+ 	}
++		return DefaultSelectLoop(idata.sel, UnifiedVectorFormat::GetData<uint8_t>(idata),
++		                                              idata.validity, sel, count, true_sel, false_sel, NO_NULL);
+ }
+ 
+ idx_t ExpressionExecutor::DefaultSelect(const Expression &expr, ExpressionState *state, const SelectionVector *sel,
+@@ -298,9 +292,9 @@ idx_t ExpressionExecutor::DefaultSelect(const Expression &expr, ExpressionState
+ 		sel = FlatVector::IncrementalSelectionVector();
+ 	}
+ 	if (!idata.validity.AllValid()) {
+-		return DefaultSelectSwitch<false>(idata, sel, count, true_sel, false_sel);
++		return DefaultSelectSwitch(idata, sel, count, true_sel, false_sel, false);
+ 	} else {
+-		return DefaultSelectSwitch<true>(idata, sel, count, true_sel, false_sel);
++		return DefaultSelectSwitch(idata, sel, count, true_sel, false_sel, true);
+ 	}
+ }
+ 
+diff --git a/src/function/cast/enum_casts.cpp b/src/function/cast/enum_casts.cpp
+index 7e22cb932d..545b693278 100644
+--- a/src/function/cast/enum_casts.cpp
++++ b/src/function/cast/enum_casts.cpp
+@@ -17,7 +17,11 @@ bool EnumEnumCast(Vector &source, Vector &result, idx_t count, CastParameters &p
+ 		    auto key = EnumType::GetPos(res_enum_type, dictionary_data[value]);
+ 		    if (key == -1) {
+ 			    if (!parameters.error_message) {
+-				    return HandleVectorCastError::Operation<RES_TYPE>(CastExceptionText<SRC_TYPE, RES_TYPE>(value),
++                        auto NUM = GetTypeId<RES_TYPE>();
++                        string typeidtostring = TypeIdToString(NUM);
++                        bool isNum = TypeIsNumber<RES_TYPE>();
++
++				    return HandleVectorCastError::Operation<RES_TYPE>(CastExceptionText<SRC_TYPE>(value, typeidtostring, isNum),
+ 				                                                      mask, row_idx, vector_cast_data);
+ 			    } else {
+ 				    mask.SetInvalid(row_idx);
+diff --git a/src/function/cast/string_cast.cpp b/src/function/cast/string_cast.cpp
+index 9f8b5ee298..44c672e33e 100644
+--- a/src/function/cast/string_cast.cpp
++++ b/src/function/cast/string_cast.cpp
+@@ -22,8 +22,13 @@ bool StringEnumCastLoop(const string_t *source_data, ValidityMask &source_mask,
+ 		if (source_mask.RowIsValid(source_idx)) {
+ 			auto pos = EnumType::GetPos(result_type, source_data[source_idx]);
+ 			if (pos == -1) {
++
++
++                        auto NUM = GetTypeId<T>();
++                        string typeidtostring = TypeIdToString(NUM);
++                        bool isNum = TypeIsNumber<T>();
+ 				result_data[i] = HandleVectorCastError::Operation<T>(
+-				    CastExceptionText<string_t, T>(source_data[source_idx]), result_mask, i, vector_cast_data);
++				    CastExceptionText<string_t>(source_data[source_idx], typeidtostring, isNum), result_mask, i, vector_cast_data);
+ 			} else {
+ 				result_data[i] = UnsafeNumericCast<T>(pos);
+ 			}
+diff --git a/src/include/duckdb/common/operator/cast_operators.hpp b/src/include/duckdb/common/operator/cast_operators.hpp
+index 1055b24f3f..681ba700ba 100644
+--- a/src/include/duckdb/common/operator/cast_operators.hpp
++++ b/src/include/duckdb/common/operator/cast_operators.hpp
+@@ -51,19 +51,19 @@ struct TryCastErrorMessageCommaSeparated {
+ 	}
+ };
+ 
+-template <class SRC, class DST>
+-static string CastExceptionText(SRC input) {
++template <class SRC>
++static string CastExceptionText(SRC input, const string &typeidtostring, bool isNum) {
+ 	if (std::is_same<SRC, string_t>()) {
+ 		return "Could not convert string '" + ConvertToString::Operation<SRC>(input) + "' to " +
+-		       TypeIdToString(GetTypeId<DST>());
++		       typeidtostring;
+ 	}
+-	if (TypeIsNumber<SRC>() && TypeIsNumber<DST>()) {
++	if (TypeIsNumber<SRC>() && isNum) {
+ 		return "Type " + TypeIdToString(GetTypeId<SRC>()) + " with value " + ConvertToString::Operation<SRC>(input) +
+ 		       " can't be cast because the value is out of range for the destination type " +
+-		       TypeIdToString(GetTypeId<DST>());
++		       typeidtostring;
+ 	}
+ 	return "Type " + TypeIdToString(GetTypeId<SRC>()) + " with value " + ConvertToString::Operation<SRC>(input) +
+-	       " can't be cast to the destination type " + TypeIdToString(GetTypeId<DST>());
++	       " can't be cast to the destination type " + typeidtostring;
+ }
+ 
+ struct Cast {
+@@ -71,7 +71,10 @@ struct Cast {
+ 	static inline DST Operation(SRC input) {
+ 		DST result;
+ 		if (!TryCast::Operation(input, result)) {
+-			throw InvalidInputException(CastExceptionText<SRC, DST>(input));
++			auto NUM = GetTypeId<DST>();
++			string typeidtostring = TypeIdToString(NUM);
++			bool isNum = TypeIsNumber<DST>();
++			throw InvalidInputException(CastExceptionText<SRC>(input, typeidtostring, isNum));
+ 		}
+ 		return result;
+ 	}
+diff --git a/src/include/duckdb/common/vector_operations/aggregate_executor.hpp b/src/include/duckdb/common/vector_operations/aggregate_executor.hpp
+index 87895f7b2a..a8a52ab688 100644
+--- a/src/include/duckdb/common/vector_operations/aggregate_executor.hpp
++++ b/src/include/duckdb/common/vector_operations/aggregate_executor.hpp
+@@ -230,9 +230,9 @@ public:
+ 		if (states.GetVectorType() == VectorType::CONSTANT_VECTOR) {
+ 			auto sdata = ConstantVector::GetData<STATE_TYPE *>(states);
+ 			OP::template ConstantOperation<STATE_TYPE, OP>(**sdata, aggr_input_data, count);
+-		} else if (states.GetVectorType() == VectorType::FLAT_VECTOR) {
+-			auto sdata = FlatVector::GetData<STATE_TYPE *>(states);
+-			NullaryFlatLoop<STATE_TYPE, OP>(sdata, aggr_input_data, count);
++//		} else if (states.GetVectorType() == VectorType::FLAT_VECTOR) {
++//			auto sdata = FlatVector::GetData<STATE_TYPE *>(states);
++//			NullaryFlatLoop<STATE_TYPE, OP>(sdata, aggr_input_data, count);
+ 		} else {
+ 			UnifiedVectorFormat sdata;
+ 			states.ToUnifiedFormat(count, sdata);
+@@ -258,12 +258,13 @@ public:
+ 			auto sdata = ConstantVector::GetData<STATE_TYPE *>(states);
+ 			AggregateUnaryInput input_data(aggr_input_data, ConstantVector::Validity(input));
+ 			OP::template ConstantOperation<INPUT_TYPE, STATE_TYPE, OP>(**sdata, *idata, input_data, count);
+-		} else if (input.GetVectorType() == VectorType::FLAT_VECTOR &&
++/*		} else if (input.GetVectorType() == VectorType::FLAT_VECTOR &&
+ 		           states.GetVectorType() == VectorType::FLAT_VECTOR) {
+ 			auto idata = FlatVector::GetData<INPUT_TYPE>(input);
+ 			auto sdata = FlatVector::GetData<STATE_TYPE *>(states);
+ 			UnaryFlatLoop<STATE_TYPE, INPUT_TYPE, OP>(idata, aggr_input_data, sdata, FlatVector::Validity(input),
+ 			                                          count);
++*/
+ 		} else {
+ 			UnifiedVectorFormat idata, sdata;
+ 			input.ToUnifiedFormat(count, idata);
+diff --git a/src/include/duckdb/common/vector_operations/binary_executor.hpp b/src/include/duckdb/common/vector_operations/binary_executor.hpp
+index 55c10bb289..a6c9c63be4 100644
+--- a/src/include/duckdb/common/vector_operations/binary_executor.hpp
++++ b/src/include/duckdb/common/vector_operations/binary_executor.hpp
+@@ -68,10 +68,9 @@ struct BinaryLambdaWrapperWithNulls {
+ };
+ 
+ struct BinaryExecutor {
+-	template <class LEFT_TYPE, class RIGHT_TYPE, class RESULT_TYPE, class OPWRAPPER, class OP, class FUNC,
+-	          bool LEFT_CONSTANT, bool RIGHT_CONSTANT>
++	template <class LEFT_TYPE, class RIGHT_TYPE, class RESULT_TYPE, class OPWRAPPER, class OP, class FUNC>
+ 	static void ExecuteFlatLoop(const LEFT_TYPE *__restrict ldata, const RIGHT_TYPE *__restrict rdata,
+-	                            RESULT_TYPE *__restrict result_data, idx_t count, ValidityMask &mask, FUNC fun) {
++	                            RESULT_TYPE *__restrict result_data, idx_t count, ValidityMask &mask, FUNC fun, bool LEFT_CONSTANT, bool RIGHT_CONSTANT) {
+ 		if (!LEFT_CONSTANT) {
+ 			ASSERT_RESTRICT(ldata, ldata + count, result_data, result_data + count);
+ 		}
+@@ -79,26 +78,13 @@ struct BinaryExecutor {
+ 			ASSERT_RESTRICT(rdata, rdata + count, result_data, result_data + count);
+ 		}
+ 
+-		if (!mask.AllValid()) {
++		if (true) {
+ 			idx_t base_idx = 0;
+ 			auto entry_count = ValidityMask::EntryCount(count);
+ 			for (idx_t entry_idx = 0; entry_idx < entry_count; entry_idx++) {
+ 				auto validity_entry = mask.GetValidityEntry(entry_idx);
+ 				idx_t next = MinValue<idx_t>(base_idx + ValidityMask::BITS_PER_VALUE, count);
+-				if (ValidityMask::AllValid(validity_entry)) {
+-					// all valid: perform operation
+-					for (; base_idx < next; base_idx++) {
+-						auto lentry = ldata[LEFT_CONSTANT ? 0 : base_idx];
+-						auto rentry = rdata[RIGHT_CONSTANT ? 0 : base_idx];
+-						result_data[base_idx] =
+-						    OPWRAPPER::template Operation<FUNC, OP, LEFT_TYPE, RIGHT_TYPE, RESULT_TYPE>(
+-						        fun, lentry, rentry, mask, base_idx);
+-					}
+-				} else if (ValidityMask::NoneValid(validity_entry)) {
+-					// nothing valid: skip all
+-					base_idx = next;
+-					continue;
+-				} else {
++{
+ 					// partially valid: need to check individual elements for validity
+ 					idx_t start = base_idx;
+ 					for (; base_idx < next; base_idx++) {
+@@ -112,13 +98,6 @@ struct BinaryExecutor {
+ 					}
+ 				}
+ 			}
+-		} else {
+-			for (idx_t i = 0; i < count; i++) {
+-				auto lentry = ldata[LEFT_CONSTANT ? 0 : i];
+-				auto rentry = rdata[RIGHT_CONSTANT ? 0 : i];
+-				result_data[i] = OPWRAPPER::template Operation<FUNC, OP, LEFT_TYPE, RIGHT_TYPE, RESULT_TYPE>(
+-				    fun, lentry, rentry, mask, i);
+-			}
+ 		}
+ 	}
+ 
+@@ -179,8 +158,8 @@ struct BinaryExecutor {
+ 				result_validity.Combine(FlatVector::Validity(right), count);
+ 			}
+ 		}
+-		ExecuteFlatLoop<LEFT_TYPE, RIGHT_TYPE, RESULT_TYPE, OPWRAPPER, OP, FUNC, LEFT_CONSTANT, RIGHT_CONSTANT>(
+-		    ldata, rdata, result_data, count, result_validity, fun);
++		ExecuteFlatLoop<LEFT_TYPE, RIGHT_TYPE, RESULT_TYPE, OPWRAPPER, OP, FUNC>(
++		    ldata, rdata, result_data, count, result_validity, fun, LEFT_CONSTANT, RIGHT_CONSTANT);
+ 	}
+ 
+ 	template <class LEFT_TYPE, class RIGHT_TYPE, class RESULT_TYPE, class OPWRAPPER, class OP, class FUNC>
+@@ -188,7 +167,8 @@ struct BinaryExecutor {
+ 	                               RESULT_TYPE *__restrict result_data, const SelectionVector *__restrict lsel,
+ 	                               const SelectionVector *__restrict rsel, idx_t count, ValidityMask &lvalidity,
+ 	                               ValidityMask &rvalidity, ValidityMask &result_validity, FUNC fun) {
+-		if (!lvalidity.AllValid() || !rvalidity.AllValid()) {
++//		if (!lvalidity.AllValid() || !rvalidity.AllValid()) {
++		{
+ 			for (idx_t i = 0; i < count; i++) {
+ 				auto lindex = lsel->get_index(i);
+ 				auto rindex = rsel->get_index(i);
+@@ -201,13 +181,14 @@ struct BinaryExecutor {
+ 					result_validity.SetInvalid(i);
+ 				}
+ 			}
+-		} else {
++/*		} else {
+ 			for (idx_t i = 0; i < count; i++) {
+ 				auto lentry = ldata[lsel->get_index(i)];
+ 				auto rentry = rdata[rsel->get_index(i)];
+ 				result_data[i] = OPWRAPPER::template Operation<FUNC, OP, LEFT_TYPE, RIGHT_TYPE, RESULT_TYPE>(
+ 				    fun, lentry, rentry, result_validity, i);
+ 			}
++*/
+ 		}
+ 	}
+ 
+@@ -299,11 +280,10 @@ public:
+ 		}
+ 	}
+ 
+-	template <class LEFT_TYPE, class RIGHT_TYPE, class OP, bool LEFT_CONSTANT, bool RIGHT_CONSTANT, bool HAS_TRUE_SEL,
+-	          bool HAS_FALSE_SEL>
++	template <class LEFT_TYPE, class RIGHT_TYPE, class OP>
+ 	static inline idx_t SelectFlatLoop(const LEFT_TYPE *__restrict ldata, const RIGHT_TYPE *__restrict rdata,
+ 	                                   const SelectionVector *sel, idx_t count, ValidityMask &validity_mask,
+-	                                   SelectionVector *true_sel, SelectionVector *false_sel) {
++	                                   SelectionVector *true_sel, SelectionVector *false_sel, bool LEFT_CONSTANT, bool RIGHT_CONSTANT) {
+ 		idx_t true_count = 0, false_count = 0;
+ 		idx_t base_idx = 0;
+ 		auto entry_count = ValidityMask::EntryCount(count);
+@@ -317,18 +297,18 @@ public:
+ 					idx_t lidx = LEFT_CONSTANT ? 0 : base_idx;
+ 					idx_t ridx = RIGHT_CONSTANT ? 0 : base_idx;
+ 					bool comparison_result = OP::Operation(ldata[lidx], rdata[ridx]);
+-					if (HAS_TRUE_SEL) {
++					if (true_sel) {
+ 						true_sel->set_index(true_count, result_idx);
+ 						true_count += comparison_result;
+ 					}
+-					if (HAS_FALSE_SEL) {
++					if (false_sel) {
+ 						false_sel->set_index(false_count, result_idx);
+ 						false_count += !comparison_result;
+ 					}
+ 				}
+ 			} else if (ValidityMask::NoneValid(validity_entry)) {
+ 				// nothing valid: skip all
+-				if (HAS_FALSE_SEL) {
++				if (false_sel) {
+ 					for (; base_idx < next; base_idx++) {
+ 						idx_t result_idx = sel->get_index(base_idx);
+ 						false_sel->set_index(false_count, result_idx);
+@@ -346,44 +326,40 @@ public:
+ 					idx_t ridx = RIGHT_CONSTANT ? 0 : base_idx;
+ 					bool comparison_result = ValidityMask::RowIsValid(validity_entry, base_idx - start) &&
+ 					                         OP::Operation(ldata[lidx], rdata[ridx]);
+-					if (HAS_TRUE_SEL) {
++					if (true_sel) {
+ 						true_sel->set_index(true_count, result_idx);
+ 						true_count += comparison_result;
+ 					}
+-					if (HAS_FALSE_SEL) {
++					if (false_sel) {
+ 						false_sel->set_index(false_count, result_idx);
+ 						false_count += !comparison_result;
+ 					}
+ 				}
+ 			}
+ 		}
+-		if (HAS_TRUE_SEL) {
++		if (true_sel) {
+ 			return true_count;
+ 		} else {
+ 			return count - false_count;
+ 		}
+ 	}
+ 
+-	template <class LEFT_TYPE, class RIGHT_TYPE, class OP, bool LEFT_CONSTANT, bool RIGHT_CONSTANT>
++	template <class LEFT_TYPE, class RIGHT_TYPE, class OP>
+ 	static inline idx_t SelectFlatLoopSwitch(const LEFT_TYPE *__restrict ldata, const RIGHT_TYPE *__restrict rdata,
+ 	                                         const SelectionVector *sel, idx_t count, ValidityMask &mask,
+-	                                         SelectionVector *true_sel, SelectionVector *false_sel) {
++	                                         SelectionVector *true_sel, SelectionVector *false_sel, bool LEFT_CONSTANT, bool RIGHT_CONSTANT) {
+ 		if (true_sel && false_sel) {
+-			return SelectFlatLoop<LEFT_TYPE, RIGHT_TYPE, OP, LEFT_CONSTANT, RIGHT_CONSTANT, true, true>(
+-			    ldata, rdata, sel, count, mask, true_sel, false_sel);
+ 		} else if (true_sel) {
+-			return SelectFlatLoop<LEFT_TYPE, RIGHT_TYPE, OP, LEFT_CONSTANT, RIGHT_CONSTANT, true, false>(
+-			    ldata, rdata, sel, count, mask, true_sel, false_sel);
+ 		} else {
+ 			D_ASSERT(false_sel);
+-			return SelectFlatLoop<LEFT_TYPE, RIGHT_TYPE, OP, LEFT_CONSTANT, RIGHT_CONSTANT, false, true>(
+-			    ldata, rdata, sel, count, mask, true_sel, false_sel);
+ 		}
++			return SelectFlatLoop<LEFT_TYPE, RIGHT_TYPE, OP>(
++			    ldata, rdata, sel, count, mask, true_sel, false_sel, LEFT_CONSTANT, RIGHT_CONSTANT);
+ 	}
+ 
+-	template <class LEFT_TYPE, class RIGHT_TYPE, class OP, bool LEFT_CONSTANT, bool RIGHT_CONSTANT>
++	template <class LEFT_TYPE, class RIGHT_TYPE, class OP>
+ 	static idx_t SelectFlat(Vector &left, Vector &right, const SelectionVector *sel, idx_t count,
+-	                        SelectionVector *true_sel, SelectionVector *false_sel) {
++	                        SelectionVector *true_sel, SelectionVector *false_sel, bool LEFT_CONSTANT, bool RIGHT_CONSTANT) {
+ 		auto ldata = FlatVector::GetData<LEFT_TYPE>(left);
+ 		auto rdata = FlatVector::GetData<RIGHT_TYPE>(right);
+ 
+@@ -405,25 +381,25 @@ public:
+ 		}
+ 
+ 		if (LEFT_CONSTANT) {
+-			return SelectFlatLoopSwitch<LEFT_TYPE, RIGHT_TYPE, OP, LEFT_CONSTANT, RIGHT_CONSTANT>(
+-			    ldata, rdata, sel, count, FlatVector::Validity(right), true_sel, false_sel);
++			return SelectFlatLoopSwitch<LEFT_TYPE, RIGHT_TYPE, OP>(
++			    ldata, rdata, sel, count, FlatVector::Validity(right), true_sel, false_sel, LEFT_CONSTANT, RIGHT_CONSTANT);
+ 		} else if (RIGHT_CONSTANT) {
+-			return SelectFlatLoopSwitch<LEFT_TYPE, RIGHT_TYPE, OP, LEFT_CONSTANT, RIGHT_CONSTANT>(
+-			    ldata, rdata, sel, count, FlatVector::Validity(left), true_sel, false_sel);
++			return SelectFlatLoopSwitch<LEFT_TYPE, RIGHT_TYPE, OP>(
++			    ldata, rdata, sel, count, FlatVector::Validity(left), true_sel, false_sel, LEFT_CONSTANT, RIGHT_CONSTANT);
+ 		} else {
+ 			ValidityMask combined_mask = FlatVector::Validity(left);
+ 			combined_mask.Combine(FlatVector::Validity(right), count);
+-			return SelectFlatLoopSwitch<LEFT_TYPE, RIGHT_TYPE, OP, LEFT_CONSTANT, RIGHT_CONSTANT>(
+-			    ldata, rdata, sel, count, combined_mask, true_sel, false_sel);
++			return SelectFlatLoopSwitch<LEFT_TYPE, RIGHT_TYPE, OP>(
++			    ldata, rdata, sel, count, combined_mask, true_sel, false_sel, LEFT_CONSTANT, RIGHT_CONSTANT);
+ 		}
+ 	}
+ 
+-	template <class LEFT_TYPE, class RIGHT_TYPE, class OP, bool NO_NULL, bool HAS_TRUE_SEL, bool HAS_FALSE_SEL>
++	template <class LEFT_TYPE, class RIGHT_TYPE, class OP>
+ 	static inline idx_t
+ 	SelectGenericLoop(const LEFT_TYPE *__restrict ldata, const RIGHT_TYPE *__restrict rdata,
+ 	                  const SelectionVector *__restrict lsel, const SelectionVector *__restrict rsel,
+ 	                  const SelectionVector *__restrict result_sel, idx_t count, ValidityMask &lvalidity,
+-	                  ValidityMask &rvalidity, SelectionVector *true_sel, SelectionVector *false_sel) {
++	                  ValidityMask &rvalidity, SelectionVector *true_sel, SelectionVector *false_sel, bool NO_NULL) {
+ 		idx_t true_count = 0, false_count = 0;
+ 		for (idx_t i = 0; i < count; i++) {
+ 			auto result_idx = result_sel->get_index(i);
+@@ -431,37 +407,37 @@ public:
+ 			auto rindex = rsel->get_index(i);
+ 			if ((NO_NULL || (lvalidity.RowIsValid(lindex) && rvalidity.RowIsValid(rindex))) &&
+ 			    OP::Operation(ldata[lindex], rdata[rindex])) {
+-				if (HAS_TRUE_SEL) {
++				if (true_sel) {
+ 					true_sel->set_index(true_count++, result_idx);
+ 				}
+ 			} else {
+-				if (HAS_FALSE_SEL) {
++				if (false_sel) {
+ 					false_sel->set_index(false_count++, result_idx);
+ 				}
+ 			}
+ 		}
+-		if (HAS_TRUE_SEL) {
++		if (true_sel) {
+ 			return true_count;
+ 		} else {
+ 			return count - false_count;
+ 		}
+ 	}
+-	template <class LEFT_TYPE, class RIGHT_TYPE, class OP, bool NO_NULL>
++	template <class LEFT_TYPE, class RIGHT_TYPE, class OP>
+ 	static inline idx_t
+ 	SelectGenericLoopSelSwitch(const LEFT_TYPE *__restrict ldata, const RIGHT_TYPE *__restrict rdata,
+ 	                           const SelectionVector *__restrict lsel, const SelectionVector *__restrict rsel,
+ 	                           const SelectionVector *__restrict result_sel, idx_t count, ValidityMask &lvalidity,
+-	                           ValidityMask &rvalidity, SelectionVector *true_sel, SelectionVector *false_sel) {
++	                           ValidityMask &rvalidity, SelectionVector *true_sel, SelectionVector *false_sel, bool NO_NULL) {
+ 		if (true_sel && false_sel) {
+-			return SelectGenericLoop<LEFT_TYPE, RIGHT_TYPE, OP, NO_NULL, true, true>(
+-			    ldata, rdata, lsel, rsel, result_sel, count, lvalidity, rvalidity, true_sel, false_sel);
++			return SelectGenericLoop<LEFT_TYPE, RIGHT_TYPE, OP>(
++			    ldata, rdata, lsel, rsel, result_sel, count, lvalidity, rvalidity, true_sel, false_sel, NO_NULL);
+ 		} else if (true_sel) {
+-			return SelectGenericLoop<LEFT_TYPE, RIGHT_TYPE, OP, NO_NULL, true, false>(
+-			    ldata, rdata, lsel, rsel, result_sel, count, lvalidity, rvalidity, true_sel, false_sel);
++			return SelectGenericLoop<LEFT_TYPE, RIGHT_TYPE, OP>(
++			    ldata, rdata, lsel, rsel, result_sel, count, lvalidity, rvalidity, true_sel, false_sel, NO_NULL);
+ 		} else {
+ 			D_ASSERT(false_sel);
+-			return SelectGenericLoop<LEFT_TYPE, RIGHT_TYPE, OP, NO_NULL, false, true>(
+-			    ldata, rdata, lsel, rsel, result_sel, count, lvalidity, rvalidity, true_sel, false_sel);
++			return SelectGenericLoop<LEFT_TYPE, RIGHT_TYPE, OP>(
++			    ldata, rdata, lsel, rsel, result_sel, count, lvalidity, rvalidity, true_sel, false_sel, NO_NULL);
+ 		}
+ 	}
+ 
+@@ -472,11 +448,11 @@ public:
+ 	                        const SelectionVector *__restrict result_sel, idx_t count, ValidityMask &lvalidity,
+ 	                        ValidityMask &rvalidity, SelectionVector *true_sel, SelectionVector *false_sel) {
+ 		if (!lvalidity.AllValid() || !rvalidity.AllValid()) {
+-			return SelectGenericLoopSelSwitch<LEFT_TYPE, RIGHT_TYPE, OP, false>(
+-			    ldata, rdata, lsel, rsel, result_sel, count, lvalidity, rvalidity, true_sel, false_sel);
++			return SelectGenericLoopSelSwitch<LEFT_TYPE, RIGHT_TYPE, OP>(
++			    ldata, rdata, lsel, rsel, result_sel, count, lvalidity, rvalidity, true_sel, false_sel, false);
+ 		} else {
+-			return SelectGenericLoopSelSwitch<LEFT_TYPE, RIGHT_TYPE, OP, true>(
+-			    ldata, rdata, lsel, rsel, result_sel, count, lvalidity, rvalidity, true_sel, false_sel);
++			return SelectGenericLoopSelSwitch<LEFT_TYPE, RIGHT_TYPE, OP>(
++			    ldata, rdata, lsel, rsel, result_sel, count, lvalidity, rvalidity, true_sel, false_sel, true);
+ 		}
+ 	}
+ 
+@@ -504,13 +480,13 @@ public:
+ 			return SelectConstant<LEFT_TYPE, RIGHT_TYPE, OP>(left, right, sel, count, true_sel, false_sel);
+ 		} else if (left.GetVectorType() == VectorType::CONSTANT_VECTOR &&
+ 		           right.GetVectorType() == VectorType::FLAT_VECTOR) {
+-			return SelectFlat<LEFT_TYPE, RIGHT_TYPE, OP, true, false>(left, right, sel, count, true_sel, false_sel);
++			return SelectFlat<LEFT_TYPE, RIGHT_TYPE, OP>(left, right, sel, count, true_sel, false_sel, true, false);
+ 		} else if (left.GetVectorType() == VectorType::FLAT_VECTOR &&
+ 		           right.GetVectorType() == VectorType::CONSTANT_VECTOR) {
+-			return SelectFlat<LEFT_TYPE, RIGHT_TYPE, OP, false, true>(left, right, sel, count, true_sel, false_sel);
++			return SelectFlat<LEFT_TYPE, RIGHT_TYPE, OP>(left, right, sel, count, true_sel, false_sel, false, true);
+ 		} else if (left.GetVectorType() == VectorType::FLAT_VECTOR &&
+ 		           right.GetVectorType() == VectorType::FLAT_VECTOR) {
+-			return SelectFlat<LEFT_TYPE, RIGHT_TYPE, OP, false, false>(left, right, sel, count, true_sel, false_sel);
++			return SelectFlat<LEFT_TYPE, RIGHT_TYPE, OP>(left, right, sel, count, true_sel, false_sel, false, false);
+ 		} else {
+ 			return SelectGeneric<LEFT_TYPE, RIGHT_TYPE, OP>(left, right, sel, count, true_sel, false_sel);
+ 		}
+diff --git a/src/include/duckdb/common/vector_operations/ternary_executor.hpp b/src/include/duckdb/common/vector_operations/ternary_executor.hpp
+index 5fea2ab478..6aa5df6392 100644
+--- a/src/include/duckdb/common/vector_operations/ternary_executor.hpp
++++ b/src/include/duckdb/common/vector_operations/ternary_executor.hpp
+@@ -122,12 +122,14 @@ public:
+ 	}
+ 
+ private:
+-	template <class A_TYPE, class B_TYPE, class C_TYPE, class OP, bool NO_NULL, bool HAS_TRUE_SEL, bool HAS_FALSE_SEL>
++	template <class A_TYPE, class B_TYPE, class C_TYPE, class OP>
+ 	static inline idx_t SelectLoop(const A_TYPE *__restrict adata, const B_TYPE *__restrict bdata,
+ 	                               const C_TYPE *__restrict cdata, const SelectionVector *result_sel, idx_t count,
+ 	                               const SelectionVector &asel, const SelectionVector &bsel,
+ 	                               const SelectionVector &csel, ValidityMask &avalidity, ValidityMask &bvalidity,
+-	                               ValidityMask &cvalidity, SelectionVector *true_sel, SelectionVector *false_sel) {
++	                               ValidityMask &cvalidity, SelectionVector *true_sel, SelectionVector *false_sel, bool NO_NULL) {
++		const bool HAS_TRUE_SEL = true_sel;
++		const bool HAS_FALSE_SEL = false_sel;
+ 		idx_t true_count = 0, false_count = 0;
+ 		for (idx_t i = 0; i < count; i++) {
+ 			auto result_idx = result_sel->get_index(i);
+@@ -153,26 +155,26 @@ private:
+ 		}
+ 	}
+ 
+-	template <class A_TYPE, class B_TYPE, class C_TYPE, class OP, bool NO_NULL>
++	template <class A_TYPE, class B_TYPE, class C_TYPE, class OP>
+ 	static inline idx_t SelectLoopSelSwitch(UnifiedVectorFormat &adata, UnifiedVectorFormat &bdata,
+ 	                                        UnifiedVectorFormat &cdata, const SelectionVector *sel, idx_t count,
+-	                                        SelectionVector *true_sel, SelectionVector *false_sel) {
++	                                        SelectionVector *true_sel, SelectionVector *false_sel, bool NO_NULL) {
+ 		if (true_sel && false_sel) {
+-			return SelectLoop<A_TYPE, B_TYPE, C_TYPE, OP, NO_NULL, true, true>(
++			return SelectLoop<A_TYPE, B_TYPE, C_TYPE, OP>(
+ 			    UnifiedVectorFormat::GetData<A_TYPE>(adata), UnifiedVectorFormat::GetData<B_TYPE>(bdata),
+ 			    UnifiedVectorFormat::GetData<C_TYPE>(cdata), sel, count, *adata.sel, *bdata.sel, *cdata.sel,
+-			    adata.validity, bdata.validity, cdata.validity, true_sel, false_sel);
++			    adata.validity, bdata.validity, cdata.validity, true_sel, false_sel, NO_NULL);
+ 		} else if (true_sel) {
+-			return SelectLoop<A_TYPE, B_TYPE, C_TYPE, OP, NO_NULL, true, false>(
++			return SelectLoop<A_TYPE, B_TYPE, C_TYPE, OP>(
+ 			    UnifiedVectorFormat::GetData<A_TYPE>(adata), UnifiedVectorFormat::GetData<B_TYPE>(bdata),
+ 			    UnifiedVectorFormat::GetData<C_TYPE>(cdata), sel, count, *adata.sel, *bdata.sel, *cdata.sel,
+-			    adata.validity, bdata.validity, cdata.validity, true_sel, false_sel);
++			    adata.validity, bdata.validity, cdata.validity, true_sel, false_sel, NO_NULL);
+ 		} else {
+ 			D_ASSERT(false_sel);
+-			return SelectLoop<A_TYPE, B_TYPE, C_TYPE, OP, NO_NULL, false, true>(
++			return SelectLoop<A_TYPE, B_TYPE, C_TYPE, OP>(
+ 			    UnifiedVectorFormat::GetData<A_TYPE>(adata), UnifiedVectorFormat::GetData<B_TYPE>(bdata),
+ 			    UnifiedVectorFormat::GetData<C_TYPE>(cdata), sel, count, *adata.sel, *bdata.sel, *cdata.sel,
+-			    adata.validity, bdata.validity, cdata.validity, true_sel, false_sel);
++			    adata.validity, bdata.validity, cdata.validity, true_sel, false_sel, NO_NULL);
+ 		}
+ 	}
+ 
+@@ -181,11 +183,11 @@ private:
+ 	                                     UnifiedVectorFormat &cdata, const SelectionVector *sel, idx_t count,
+ 	                                     SelectionVector *true_sel, SelectionVector *false_sel) {
+ 		if (!adata.validity.AllValid() || !bdata.validity.AllValid() || !cdata.validity.AllValid()) {
+-			return SelectLoopSelSwitch<A_TYPE, B_TYPE, C_TYPE, OP, false>(adata, bdata, cdata, sel, count, true_sel,
+-			                                                              false_sel);
++			return SelectLoopSelSwitch<A_TYPE, B_TYPE, C_TYPE, OP>(adata, bdata, cdata, sel, count, true_sel,
++			                                                              false_sel, false);
+ 		} else {
+-			return SelectLoopSelSwitch<A_TYPE, B_TYPE, C_TYPE, OP, true>(adata, bdata, cdata, sel, count, true_sel,
+-			                                                             false_sel);
++			return SelectLoopSelSwitch<A_TYPE, B_TYPE, C_TYPE, OP>(adata, bdata, cdata, sel, count, true_sel,
++			                                                             false_sel, true);
+ 		}
+ 	}
+ 
+diff --git a/src/include/duckdb/common/vector_operations/unary_executor.hpp b/src/include/duckdb/common/vector_operations/unary_executor.hpp
+index 9f29d7410f..e565ad7b51 100644
+--- a/src/include/duckdb/common/vector_operations/unary_executor.hpp
++++ b/src/include/duckdb/common/vector_operations/unary_executor.hpp
+@@ -71,7 +71,7 @@ private:
+ 		ASSERT_RESTRICT(ldata, ldata + max_index, result_data, result_data + count);
+ #endif
+ 
+-		if (!mask.AllValid()) {
++		if (true) {
+ 			for (idx_t i = 0; i < count; i++) {
+ 				auto idx = sel_vector->get_index(i);
+ 				if (mask.RowIsValidUnsafe(idx)) {
+@@ -81,12 +81,6 @@ private:
+ 					result_mask.SetInvalid(i);
+ 				}
+ 			}
+-		} else {
+-			for (idx_t i = 0; i < count; i++) {
+-				auto idx = sel_vector->get_index(i);
+-				result_data[i] =
+-				    OPWRAPPER::template Operation<OP, INPUT_TYPE, RESULT_TYPE>(ldata[idx], result_mask, i, dataptr);
+-			}
+ 		}
+ 	}
+ 
+@@ -95,7 +89,7 @@ private:
+ 	                               ValidityMask &mask, ValidityMask &result_mask, void *dataptr, bool adds_nulls) {
+ 		ASSERT_RESTRICT(ldata, ldata + count, result_data, result_data + count);
+ 
+-		if (!mask.AllValid()) {
++		if (true) {
+ 			if (!adds_nulls) {
+ 				result_mask.Initialize(mask);
+ 			} else {
+@@ -106,6 +100,7 @@ private:
+ 			for (idx_t entry_idx = 0; entry_idx < entry_count; entry_idx++) {
+ 				auto validity_entry = mask.GetValidityEntry(entry_idx);
+ 				idx_t next = MinValue<idx_t>(base_idx + ValidityMask::BITS_PER_VALUE, count);
++				/*
+ 				if (ValidityMask::AllValid(validity_entry)) {
+ 					// all valid: perform operation
+ 					for (; base_idx < next; base_idx++) {
+@@ -116,7 +111,7 @@ private:
+ 					// nothing valid: skip all
+ 					base_idx = next;
+ 					continue;
+-				} else {
++				} else */ {
+ 					// partially valid: need to check individual elements for validity
+ 					idx_t start = base_idx;
+ 					for (; base_idx < next; base_idx++) {
+@@ -128,11 +123,6 @@ private:
+ 					}
+ 				}
+ 			}
+-		} else {
+-			for (idx_t i = 0; i < count; i++) {
+-				result_data[i] =
+-				    OPWRAPPER::template Operation<OP, INPUT_TYPE, RESULT_TYPE>(ldata[i], result_mask, i, dataptr);
+-			}
+ 		}
+ 	}
+ 
+diff --git a/src/include/duckdb/function/cast/vector_cast_helpers.hpp b/src/include/duckdb/function/cast/vector_cast_helpers.hpp
+index 9766df4e32..08ca036bfd 100644
+--- a/src/include/duckdb/function/cast/vector_cast_helpers.hpp
++++ b/src/include/duckdb/function/cast/vector_cast_helpers.hpp
+@@ -35,7 +35,11 @@ struct VectorTryCastOperator {
+ 			return output;
+ 		}
+ 		auto data = reinterpret_cast<VectorTryCastData *>(dataptr);
+-		return HandleVectorCastError::Operation<RESULT_TYPE>(CastExceptionText<INPUT_TYPE, RESULT_TYPE>(input), mask,
++                        auto NUM = GetTypeId<RESULT_TYPE>();
++                        string typeidtostring = TypeIdToString(NUM);
++                        bool isNum = TypeIsNumber<RESULT_TYPE>();
++
++		return HandleVectorCastError::Operation<RESULT_TYPE>(CastExceptionText<INPUT_TYPE>(input, typeidtostring, isNum), mask,
+ 		                                                     idx, *data);
+ 	}
+ };
+@@ -49,7 +53,10 @@ struct VectorTryCastStrictOperator {
+ 		if (DUCKDB_LIKELY(OP::template Operation<INPUT_TYPE, RESULT_TYPE>(input, output, data->parameters.strict))) {
+ 			return output;
+ 		}
+-		return HandleVectorCastError::Operation<RESULT_TYPE>(CastExceptionText<INPUT_TYPE, RESULT_TYPE>(input), mask,
++                        auto NUM = GetTypeId<RESULT_TYPE>();
++                        string typeidtostring = TypeIdToString(NUM);
++                        bool isNum = TypeIsNumber<RESULT_TYPE>();
++		return HandleVectorCastError::Operation<RESULT_TYPE>(CastExceptionText<INPUT_TYPE>(input, typeidtostring, isNum), mask,
+ 		                                                     idx, *data);
+ 	}
+ };
+@@ -64,8 +71,11 @@ struct VectorTryCastErrorOperator {
+ 			return output;
+ 		}
+ 		bool has_error = data->parameters.error_message && !data->parameters.error_message->empty();
++                        auto NUM = GetTypeId<RESULT_TYPE>();
++                        string typeidtostring = TypeIdToString(NUM);
++                        bool isNum = TypeIsNumber<RESULT_TYPE>();
+ 		return HandleVectorCastError::Operation<RESULT_TYPE>(
+-		    has_error ? *data->parameters.error_message : CastExceptionText<INPUT_TYPE, RESULT_TYPE>(input), mask, idx,
++		    has_error ? *data->parameters.error_message : CastExceptionText<INPUT_TYPE>(input, typeidtostring, isNum), mask, idx,
+ 		    *data);
+ 	}
+ };
+@@ -80,7 +90,10 @@ struct VectorTryCastStringOperator {
+ 		        OP::template Operation<INPUT_TYPE, RESULT_TYPE>(input, output, data->result, data->parameters))) {
+ 			return output;
+ 		}
+-		return HandleVectorCastError::Operation<RESULT_TYPE>(CastExceptionText<INPUT_TYPE, RESULT_TYPE>(input), mask,
++                        auto NUM = GetTypeId<RESULT_TYPE>();
++                        string typeidtostring = TypeIdToString(NUM);
++                        bool isNum = TypeIsNumber<RESULT_TYPE>();
++		return HandleVectorCastError::Operation<RESULT_TYPE>(CastExceptionText<INPUT_TYPE>(input, typeidtostring, isNum), mask,
+ 		                                                     idx, *data);
+ 	}
+ };
+diff --git a/src/include/duckdb/main/extension_install_info.hpp b/src/include/duckdb/main/extension_install_info.hpp
+index 6ccd1a1156..8040f537b6 100644
+--- a/src/include/duckdb/main/extension_install_info.hpp
++++ b/src/include/duckdb/main/extension_install_info.hpp
+@@ -55,9 +55,9 @@ public:
+ 
+ struct ExtensionRepository {
+ 	//! All currently available repositories
+-	static constexpr const char *CORE_REPOSITORY_URL = "http://extensions.duckdb.org";
+-	static constexpr const char *CORE_NIGHTLY_REPOSITORY_URL = "http://nightly-extensions.duckdb.org";
+-	static constexpr const char *COMMUNITY_REPOSITORY_URL = "http://community-extensions.duckdb.org";
++	static constexpr const char *CORE_REPOSITORY_URL = "https://extensions.duckdb.org";
++	static constexpr const char *CORE_NIGHTLY_REPOSITORY_URL = "https://nightly-extensions.duckdb.org";
++	static constexpr const char *COMMUNITY_REPOSITORY_URL = "https://community-extensions.duckdb.org";
+ 
+ 	//! Debugging repositories (target local, relative paths that are produced by DuckDB's build system)
+ 	static constexpr const char *BUILD_DEBUG_REPOSITORY_PATH = "./build/debug/repository";
+diff --git a/src/main/extension/extension_helper.cpp b/src/main/extension/extension_helper.cpp
+index 494832417e..17a39d04b4 100644
+--- a/src/main/extension/extension_helper.cpp
++++ b/src/main/extension/extension_helper.cpp
+@@ -328,7 +328,6 @@ vector<ExtensionUpdateResult> ExtensionHelper::UpdateExtensions(ClientContext &c
+ 	vector<ExtensionUpdateResult> result;
+ 	DatabaseInstance &db = DatabaseInstance::GetDatabase(context);
+ 
+-#ifndef WASM_LOADABLE_EXTENSIONS
+ 	case_insensitive_set_t seen_extensions;
+ 
+ 	// scan the install directory for installed extensions
+@@ -345,7 +344,6 @@ vector<ExtensionUpdateResult> ExtensionHelper::UpdateExtensions(ClientContext &c
+ 
+ 		result.push_back(UpdateExtensionInternal(context, db, fs, fs.JoinPath(ext_directory, path), extension_name));
+ 	});
+-#endif
+ 
+ 	return result;
+ }
+diff --git a/src/main/extension/extension_install.cpp b/src/main/extension/extension_install.cpp
+index 4c21da0433..413c408ac6 100644
+--- a/src/main/extension/extension_install.cpp
++++ b/src/main/extension/extension_install.cpp
+@@ -198,7 +198,7 @@ string ExtensionHelper::ExtensionUrlTemplate(optional_ptr<const DatabaseInstance
+ 		versioned_path = "/${REVISION}/${PLATFORM}/${NAME}.duckdb_extension";
+ 	}
+ #ifdef WASM_LOADABLE_EXTENSIONS
+-	string default_endpoint = DEFAULT_REPOSITORY;
++	string default_endpoint = ExtensionRepository::DEFAULT_REPOSITORY_URL;
+ 	versioned_path = versioned_path + ".wasm";
+ #else
+ 	string default_endpoint = ExtensionRepository::DEFAULT_REPOSITORY_URL;
+diff --git a/src/main/extension/extension_load.cpp b/src/main/extension/extension_load.cpp
+index d7168ff9c4..9d39ae56ae 100644
+--- a/src/main/extension/extension_load.cpp
++++ b/src/main/extension/extension_load.cpp
+@@ -295,7 +295,13 @@ bool ExtensionHelper::TryInitialLoad(DatabaseInstance &db, FileSystem &fs, const
+ 		direct_load = false;
+ 		string extension_name = ApplyExtensionAlias(extension);
+ #ifdef WASM_LOADABLE_EXTENSIONS
+-		string url_template = ExtensionUrlTemplate(&config, "");
++		ExtensionRepository repository;
++
++		string custom_endpoint = db.config.options.custom_extension_repo;
++		if (!custom_endpoint.empty()) {
++			repository = ExtensionRepository("custom", custom_endpoint);
++		}
++		string url_template = ExtensionUrlTemplate(db, repository, "");
+ 		string url = ExtensionFinalizeUrlTemplate(url_template, extension_name);
+ 
+ 		char *str = (char *)EM_ASM_PTR(
+@@ -336,73 +342,223 @@ bool ExtensionHelper::TryInitialLoad(DatabaseInstance &db, FileSystem &fs, const
+ 		direct_load = true;
+ 		filename = fs.ExpandPath(filename);
+ 	}
+-	if (!fs.FileExists(filename)) {
+-		string message;
+-		bool exact_match = ExtensionHelper::CreateSuggestions(extension, message);
+-		if (exact_match) {
+-			message += "\nInstall it first using \"INSTALL " + extension + "\".";
+-		}
+-		error = StringUtil::Format("Extension \"%s\" not found.\n%s", filename, message);
+-		return false;
+-	}
+-
+-	auto handle = fs.OpenFile(filename, FileFlags::FILE_FLAGS_READ);
++	/*	if (!fs.FileExists(filename)) {
++	        string message;
++	        bool exact_match = ExtensionHelper::CreateSuggestions(extension, message);
++	        if (exact_match) {
++	            message += "\nInstall it first using \"INSTALL " + extension + "\".";
++	        }
++	        error = StringUtil::Format("Extension \"%s\" not found.\n%s", filename, message);
++	        return false;
++	    }
++	*/
++
++	/*	auto handle = fs.OpenFile(filename, FileFlags::FILE_FLAGS_READ);
++
++	    // Parse the extension metadata from the extension binary
++	    auto parsed_metadata = ParseExtensionMetaData(*handle);
++
++	    auto metadata_mismatch_error = parsed_metadata.GetInvalidMetadataError();
++
++	    if (!metadata_mismatch_error.empty()) {
++	        metadata_mismatch_error = StringUtil::Format("Failed to load '%s', %s", extension, metadata_mismatch_error);
++	    }
++
++	    if (!db.config.options.allow_unsigned_extensions) {
++	        bool signature_valid =
++	            CheckExtensionSignature(*handle, parsed_metadata, db.config.options.allow_community_extensions);
++
++	        if (!signature_valid) {
++	            throw IOException(db.config.error_manager->FormatException(ErrorType::UNSIGNED_EXTENSION, filename) +
++	                              metadata_mismatch_error);
++	        }
++
++	        if (!metadata_mismatch_error.empty()) {
++	            // Signed extensions perform the full check
++	            throw InvalidInputException(metadata_mismatch_error);
++	        }
++	    } else if (!db.config.options.allow_extensions_metadata_mismatch) {
++	        if (!metadata_mismatch_error.empty()) {
++	            // Unsigned extensions AND configuration allowing n, loading allowed, mainly for
++	            // debugging purposes
++	            throw InvalidInputException(metadata_mismatch_error);
++	        }
++	    }
++	*/
++	auto filebase = fs.ExtractBaseName(filename);
+ 
+-	// Parse the extension metadata from the extension binary
+-	auto parsed_metadata = ParseExtensionMetaData(*handle);
++#ifdef WASM_LOADABLE_EXTENSIONS
++	auto basename = fs.ExtractBaseName(filename);
++	char *exe = NULL;
++	exe = (char *)EM_ASM_PTR(
++	    {
++		    // Next few lines should argubly in separate JavaScript-land function call
++		    // TODO: move them out / have them configurable
+ 
+-	auto metadata_mismatch_error = parsed_metadata.GetInvalidMetadataError();
++		    var url = (UTF8ToString($0));
++
++		    if (typeof XMLHttpRequest === "undefined") {
++			    const os = require('os');
++			    const path = require('path');
++			    const fs = require('fs');
++
++			    var array = url.split("/");
++			    var l = array.length;
++
++			    var folder = path.join(os.homedir(), ".duckdb/extensions/" + array[l - 4] + "/" + array[l - 3] + "/" +
++			                                             array[l - 2] + "/");
++			    var filePath = path.join(folder, array[l - 1]);
++
++			    try {
++				    if (!fs.existsSync(folder)) {
++					    fs.mkdirSync(folder, {recursive : true});
++				    }
++
++				    if (!fs.existsSync(filePath)) {
++					    const int32 = new Int32Array(new SharedArrayBuffer(8));
++					    var Worker = require('node:worker_threads').Worker;
++                var worker = new Worker("const {Worker,isMainThread,parentPort,workerData,} = require('node:worker_threads');var times = 0;var SAB = 23;var Z = 0; async function ZZZ(e) {var x = await fetch(e);var res = await x.arrayBuffer();Atomics.store(SAB, 1, res.byteLength);Atomics.store(SAB, 0, 1);Atomics.notify(SAB, 1);Atomics.notify(SAB, 0);Z = res;};parentPort.on('message', function(event) {if (times == 0) {times++;SAB = event;} else if (times == 1) {times++; ZZZ(event);} else {const a = new Uint8Array(Z);const b = new Uint8Array(event.buffer);var K = Z.byteLength;for (var i = 0; i < K; i++) {b[i] = a[i];}Atomics.notify(event, 0);Atomics.store(SAB, 0, 2);Atomics.notify(SAB, 0);}});", {
++                    eval: true
++                });
++					    var uInt8Array;
++
++					    int32[0] = 0;
++					    int32[2] = 4;
++					    worker.postMessage(int32);
++
++					    worker.postMessage(url);
++					    Atomics.wait(int32, 0, 0);
++
++					    const int32_2 = new Int32Array(new SharedArrayBuffer(int32[1] + 3 - ((int32[1] + 3) % 4)));
++					    worker.postMessage(int32_2);
++
++					    Atomics.wait(int32, 0, 1);
++
++					    var x = new Uint8Array(int32_2.buffer, 0, int32[1]);
++					    uInt8Array = x;
++					    worker.terminate();
++					    fs.writeFileSync(filePath, uInt8Array);
++
++				    } else {
++					    uInt8Array = fs.readFileSync(filePath);
++				    }
++			    } catch (e) {
++				    console.log("Error fetching module", e);
++				    return 0;
++			    }
++		    } else {
++			    const xhr = new XMLHttpRequest();
++			    xhr.open("GET", url, false);
++			    xhr.responseType = "arraybuffer";
++			    xhr.send(null);
++			    if (xhr.status != 200)
++				    return 0;
++			    uInt8Array = xhr.response;
++		    }
++
++		    var valid = WebAssembly.validate(uInt8Array);
++		    var len = uInt8Array.byteLength;
++		    var fileOnWasmHeap = _malloc(len + 4);
++
++		    var properArray = new Uint8Array(uInt8Array);
++
++		    for (var iii = 0; iii < len; iii++) {
++			    Module.HEAPU8[iii + fileOnWasmHeap + 4] = properArray[iii];
++		    }
++		    var LEN123 = new Uint8Array(4);
++		    LEN123[0] = len % 256;
++		    len -= LEN123[0];
++		    len /= 256;
++		    LEN123[1] = len % 256;
++		    len -= LEN123[1];
++		    len /= 256;
++		    LEN123[2] = len % 256;
++		    len -= LEN123[2];
++		    len /= 256;
++		    LEN123[3] = len % 256;
++		    len -= LEN123[3];
++		    len /= 256;
++		    Module.HEAPU8.set(LEN123, fileOnWasmHeap);
++		    // FIXME: found how to expose those to the logger interface
++		    // console.log(LEN123);
++		    // console.log(properArray);
++		    // console.log(new Uint8Array(Module.HEAPU8, fileOnWasmHeap, len+4));
++		    // console.log('Loading extension ', UTF8ToString($1));
+ 
+-	if (!metadata_mismatch_error.empty()) {
+-		metadata_mismatch_error = StringUtil::Format("Failed to load '%s', %s", extension, metadata_mismatch_error);
++		    // Here we add the uInt8Array to Emscripten's filesystem, for it to be found by dlopen
++		    FS.writeFile(UTF8ToString($1), new Uint8Array(uInt8Array));
++		    return fileOnWasmHeap;
++	    },
++	    filename.c_str(), basename.c_str());
++	if (!exe) {
++		throw IOException("Extension %s is not available", filename);
+ 	}
+ 
++	auto dopen_from = basename;
+ 	if (!db.config.options.allow_unsigned_extensions) {
+-		bool signature_valid;
+-		if (parsed_metadata.AppearsValid()) {
+-			signature_valid =
+-			    CheckExtensionSignature(*handle, parsed_metadata, db.config.options.allow_community_extensions);
+-		} else {
+-			signature_valid = false;
++		// signature is the last 256 bytes of the file
++
++		string signature;
++		signature.resize(256);
++
++		D_ASSERT(exe);
++		uint64_t LEN = 0;
++		LEN *= 256;
++		LEN += ((uint8_t *)exe)[3];
++		LEN *= 256;
++		LEN += ((uint8_t *)exe)[2];
++		LEN *= 256;
++		LEN += ((uint8_t *)exe)[1];
++		LEN *= 256;
++		LEN += ((uint8_t *)exe)[0];
++		auto signature_offset = LEN - signature.size();
++
++		const idx_t maxLenChunks = 1024ULL * 1024ULL;
++		const idx_t numChunks = (signature_offset + maxLenChunks - 1) / maxLenChunks;
++		std::vector<std::string> hash_chunks(numChunks);
++		std::vector<idx_t> splits(numChunks + 1);
++
++		for (idx_t i = 0; i < numChunks; i++) {
++			splits[i] = maxLenChunks * i;
+ 		}
++		splits.back() = signature_offset;
++
++		for (idx_t i = 0; i < numChunks; i++) {
++			string x;
++			x.resize(splits[i + 1] - splits[i]);
++			for (idx_t j = 0; j < x.size(); j++) {
++				x[j] = ((uint8_t *)exe)[j + 4 + splits[i]];
++			}
++			ComputeSHA256String(x, &hash_chunks[i]);
++		}
++
++		string hash_concatenation;
++		hash_concatenation.reserve(32 * numChunks); // 256 bits -> 32 bytes per chunk
+ 
+-		if (!signature_valid) {
+-			throw IOException(db.config.error_manager->FormatException(ErrorType::UNSIGNED_EXTENSION, filename) +
+-			                  metadata_mismatch_error);
++		for (auto &hash_chunk : hash_chunks) {
++			hash_concatenation += hash_chunk;
+ 		}
+ 
+-		if (!metadata_mismatch_error.empty()) {
+-			// Signed extensions perform the full check
+-			throw InvalidInputException(metadata_mismatch_error);
++		string two_level_hash;
++		ComputeSHA256String(hash_concatenation, &two_level_hash);
++
++		for (idx_t j = 0; j < signature.size(); j++) {
++			signature[j] = ((uint8_t *)exe)[4 + signature_offset + j];
++		}
++		bool any_valid = false;
++		for (auto &key : ExtensionHelper::GetPublicKeys(db.config.options.allow_community_extensions)) {
++			if (duckdb_mbedtls::MbedTlsWrapper::IsValidSha256Signature(key, signature, two_level_hash)) {
++				any_valid = true;
++				break;
++			}
+ 		}
+-	} else if (!db.config.options.allow_extensions_metadata_mismatch) {
+-		if (!metadata_mismatch_error.empty()) {
+-			// Unsigned extensions AND configuration allowing n, loading allowed, mainly for
+-			// debugging purposes
+-			throw InvalidInputException(metadata_mismatch_error);
++		if (!any_valid) {
++			throw IOException(db.config.error_manager->FormatException(ErrorType::UNSIGNED_EXTENSION, filename));
+ 		}
+ 	}
+-
+-	auto filebase = fs.ExtractBaseName(filename);
+-
+-#ifdef WASM_LOADABLE_EXTENSIONS
+-	EM_ASM(
+-	    {
+-		    // Next few lines should argubly in separate JavaScript-land function call
+-		    // TODO: move them out / have them configurable
+-		    const xhr = new XMLHttpRequest();
+-		    xhr.open("GET", UTF8ToString($0), false);
+-		    xhr.responseType = "arraybuffer";
+-		    xhr.send(null);
+-		    var uInt8Array = xhr.response;
+-		    WebAssembly.validate(uInt8Array);
+-		    console.log('Loading extension ', UTF8ToString($1));
+-
+-		    // Here we add the uInt8Array to Emscripten's filesystem, for it to be found by dlopen
+-		    FS.writeFile(UTF8ToString($1), new Uint8Array(uInt8Array));
+-	    },
+-	    filename.c_str(), filebase.c_str());
+-	auto dopen_from = filebase;
++	if (exe) {
++		free(exe);
++	}
+ #else
+ 	auto dopen_from = filename;
+ #endif
+@@ -420,25 +576,27 @@ bool ExtensionHelper::TryInitialLoad(DatabaseInstance &db, FileSystem &fs, const
+ 	result.lib_hdl = lib_hdl;
+ 
+ 	if (!direct_load) {
+-		auto info_file_name = filename + ".info";
+-
+-		result.install_info = ExtensionInstallInfo::TryReadInfoFile(fs, info_file_name, lowercase_extension_name);
+-
+-		if (result.install_info->mode == ExtensionInstallMode::UNKNOWN) {
+-			// The info file was missing, we just set the version, since we have it from the parsed footer
+-			result.install_info->version = parsed_metadata.extension_version;
+-		}
+-
+-		if (result.install_info->version != parsed_metadata.extension_version) {
+-			throw IOException("Metadata mismatch detected when loading extension '%s'\nPlease try reinstalling the "
+-			                  "extension using `FORCE INSTALL '%s'`",
+-			                  filename, extension);
+-		}
++		/*
++		        auto info_file_name = filename + ".info";
++
++		        result.install_info = ExtensionInstallInfo::TryReadInfoFile(fs, info_file_name,
++		   lowercase_extension_name);
++
++		        if (result.install_info->mode == ExtensionInstallMode::UNKNOWN) {
++		            // The info file was missing, we just set the version, since we have it from the parsed footer
++		            result.install_info->version = parsed_metadata.extension_version;
++		        }
++
++		        if (result.install_info->version != parsed_metadata.extension_version) {
++		            throw IOException("Metadata mismatch detected when loading extension '%s'\nPlease try reinstalling
++		   the " "extension using `FORCE INSTALL '%s'`", filename, extension);
++		        }
++		*/
+ 	} else {
+ 		result.install_info = make_uniq<ExtensionInstallInfo>();
+ 		result.install_info->mode = ExtensionInstallMode::NOT_INSTALLED;
+ 		result.install_info->full_path = filename;
+-		result.install_info->version = parsed_metadata.extension_version;
++		result.install_info->version = ""; // parsed_metadata.extension_version;
+ 	}
+ 
+ 	return true;
