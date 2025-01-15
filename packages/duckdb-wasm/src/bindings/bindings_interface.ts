@@ -36,12 +36,24 @@ export interface DuckDBBindings {
     registerFileURL(name: string, url: string, proto: DuckDBDataProtocol, directIO: boolean): void;
     registerFileText(name: string, text: string): void;
     registerFileBuffer(name: string, buffer: Uint8Array): void;
-    registerFileHandle<HandleType>(
+    registerFileHandleAsync<HandleType>(
         name: string,
         handle: HandleType,
         protocol: DuckDBDataProtocol,
         directIO: boolean,
     ): Promise<void>;
+    prepareFileHandleAsync<HandleType>(
+        name: string,
+        handle: HandleType,
+        protocol: DuckDBDataProtocol,
+        directIO: boolean,
+    ): Promise<HandleType>;
+    registerFileHandle<HandleType>(
+        name: string,
+        handle: HandleType,
+        protocol: DuckDBDataProtocol,
+        directIO: boolean,
+    ) : void;
     prepareDBFileHandle(path: string, protocol: DuckDBDataProtocol): Promise<void>;
     globFiles(path: string): WebFile[];
     dropFile(name: string): void;
