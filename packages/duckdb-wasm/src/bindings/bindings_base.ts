@@ -135,10 +135,13 @@ export abstract class DuckDBBindingsBase implements DuckDBBindings {
     /** Tokenize a script */
     public tokenize(text: string): ScriptTokens {
         const BUF = TEXT_ENCODER.encode(text);
-        const bufferPtr = this.mod._malloc(BUF.length );
-        const bufferOfs = this.mod.HEAPU8.subarray(bufferPtr, bufferPtr + BUF.length );
+	console.log(text, BUF, BUF.length);
+        const bufferPtr = this.mod._malloc(BUF.length +10);
+        const bufferOfs = this.mod.HEAPU8.subarray(bufferPtr, bufferPtr + BUF.length+10 );
+	bufferOfs.set(new Uint8Array(BUF.length + 5));
         bufferOfs.set(BUF);
         const [s, d, n] = callSRet(this.mod, 'duckdb_web_tokenize_buffer', ['number', 'number'], [bufferPtr, BUF.length]);
+	console.log("YO");
         this.mod._free(bufferPtr);
         if (s !== StatusCode.SUCCESS) {
             throw new Error(readString(this.mod, d, n));
@@ -169,10 +172,15 @@ export abstract class DuckDBBindingsBase implements DuckDBBindings {
     /** Send a query and return the full result */
     public runQuery(conn: number, text: string): Uint8Array {
         const BUF = TEXT_ENCODER.encode(text);
-        const bufferPtr = this.mod._malloc(BUF.length);
-        const bufferOfs = this.mod.HEAPU8.subarray(bufferPtr, bufferPtr + BUF.length);
+        const bufferPtr = this.mod._malloc(BUF.length + 10);
+        const bufferOfs = this.mod.HEAPU8.subarray(bufferPtr, bufferPtr + BUF.length + 10);
+	bufferOfs.set(new Uint8Array(BUF.length + 5));
+	bufferOfs[BUF.length] = 0;
+	bufferOfs[BUF.length+1] = 0;
+	bufferOfs[BUF.length+2] = 0;
         bufferOfs.set(BUF);
         const [s, d, n] = callSRet(this.mod, 'duckdb_web_query_run_buffer', ['number', 'number', 'number'], [conn, bufferPtr, BUF.length]);
+	console.log("YOP");
         this.mod._free(bufferPtr);
         if (s !== StatusCode.SUCCESS) {
             throw new Error(readString(this.mod, d, n));

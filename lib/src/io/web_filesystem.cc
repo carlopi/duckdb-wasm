@@ -174,10 +174,10 @@ void WebFileSystem::DataBuffer::Resize(size_t n) {
         data_ = std::move(next);
         capacity_ = cap;
     } else if (n < (capacity_ / 2)) {
-        auto next = std::unique_ptr<char[]>(new char[n]);
-        ::memcpy(next.get(), data_.get(), n);
-        data_ = std::move(next);
-        capacity_ = n;
+       // auto next = std::unique_ptr<char[]>(new char[n]);
+       // ::memcpy(next.get(), data_.get(), n);
+       // data_ = std::move(next);
+       // capacity_ = n;
     }
     size_ = n;
 }
@@ -840,6 +840,7 @@ int64_t WebFileSystem::Write(duckdb::FileHandle &handle, void *buffer, int64_t n
         }
         case DataProtocol::NODE_FS:
         case DataProtocol::BROWSER_FSACCESS: {
+        case DataProtocol::BROWSER_FILEREADER:
             auto end = file_hdl.position_ + nr_bytes;
             size_t n;
 
@@ -876,8 +877,6 @@ int64_t WebFileSystem::Write(duckdb::FileHandle &handle, void *buffer, int64_t n
             break;
         }
 
-        case DataProtocol::BROWSER_FILEREADER:
-            throw std::runtime_error("HTML FileReaders do not support writing");
         case DataProtocol::HTTP:
             throw std::runtime_error("HTTP files do not support writing");
         case DataProtocol::S3:

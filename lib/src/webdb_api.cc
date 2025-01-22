@@ -153,6 +153,7 @@ void duckdb_web_tokenize(WASMResponse* packed, const char* query) {
 }
 /// Tokenize a query
 void duckdb_web_tokenize_buffer(WASMResponse* packed, const uint8_t* buffer, size_t buffer_length) {
+	std::cout << buffer_length << " is the size in input\n";
     GET_WEBDB(*packed);
     std::string_view query(reinterpret_cast<const char*>(buffer), buffer_length);
     auto tokens = webdb.Tokenize(query);

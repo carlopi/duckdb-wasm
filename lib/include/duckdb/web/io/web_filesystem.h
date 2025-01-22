@@ -136,12 +136,13 @@ class WebFileSystem : public duckdb::FileSystem {
               file_(file),
               readahead_(nullptr),
               position_(0) {
+		std::cout<<"constructor\n";
             ++file_->handle_count_;
         }
         /// Delete copy constructor
         WebFileHandle(const WebFileHandle &) = delete;
         /// Destructor
-        virtual ~WebFileHandle() { Close(); }
+        virtual ~WebFileHandle() {std::cout<<"destructor\t"<<"\n"; try{Close();}catch(...) {std::cout << "ooops\n";} }
         /// Get the file name
         auto &GetName() const { return file_->file_name_; }
         /// Resolve readahead

@@ -416,9 +416,9 @@ export const BROWSER_RUNTIME: DuckDBRuntime & {
                 return;
             case DuckDBDataProtocol.BUFFER:
             case DuckDBDataProtocol.NODE_FS:
-            case DuckDBDataProtocol.BROWSER_FILEREADER:
                 failWith(mod, `truncateFile not implemented`);
                 return;
+            case DuckDBDataProtocol.BROWSER_FILEREADER:
             case DuckDBDataProtocol.BROWSER_FSACCESS: {
                 const handle = BROWSER_RUNTIME._files?.get(file.fileName);
                 if (!handle) {
@@ -484,8 +484,10 @@ export const BROWSER_RUNTIME: DuckDBRuntime & {
                     if (!handle) {
                         throw new Error(`No HTML5 file registered with name: ${file.fileName}`);
                     }
-                    const sliced = handle!.slice(location, location + bytes);
-                    const data = new Uint8Array(new FileReaderSync().readAsArrayBuffer(sliced));
+
+                    const data = new Uint8Array(bytes);
+		for (var i = location; i< location + bytes; i++) data[i-location] = handle[i];
+
                     mod.HEAPU8.set(data, buf);
                     return data.byteLength;
                 }
@@ -524,8 +526,16 @@ export const BROWSER_RUNTIME: DuckDBRuntime & {
                 return bytes;
             }
             case DuckDBDataProtocol.BROWSER_FILEREADER:
-                failWith(mod, 'cannot write using the html5 file reader api');
-                return 0;
+                let handle = BROWSER_RUNTIME._files?.get(file.fileName);
+                if (!handle) {
+			handle = BROWSER_RUNTIME._files?.set(file.fileName, new Uint8Array(1000000));
+                    //throw new Error(`No OPFS access handle registered with name: ${file.fileName}`);
+                }
+                const input = mod.HEAPU8.subarray(buf, buf + bytes);
+		for (var i = buf; i< buf + bytes; i++) handle[i] = input[i-buf];
+                //return handle.write(input, { at: location });
+console.log("write bytes", bytes, location);
+                    return bytes;
             case DuckDBDataProtocol.BROWSER_FSACCESS: {
                 const handle = BROWSER_RUNTIME._files?.get(file.fileName);
                 if (!handle) {
