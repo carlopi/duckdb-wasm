@@ -224,6 +224,9 @@ export abstract class DuckDBBindingsBase implements DuckDBBindings {
     /** Fetch query results */
     public fetchQueryResults(conn: number): Uint8Array {
         const [s, d, n] = callSRet(this.mod, 'duckdb_web_query_fetch_results', ['number'], [conn]);
+        if (!IsArrowBufer(s)) {
+            throw new Error("Unexpected StatusCode from duckdb_web_query_fetch_results", s, "with self reported error as", readString(this.mod, d, n));
+        }
         if (s !== StatusCode.SUCCESS) {
             throw new Error(readString(this.mod, d, n));
         }

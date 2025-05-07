@@ -29,6 +29,19 @@ namespace web {
 
 struct BufferingArrowIPCStreamDecoder;
 
+struct DuckDBWasmResultsWrapper {
+	enum ResponseStatus : uint32_t {
+		ARROW_BUFFER= 0
+	};
+	DuckDBWasmResultsWrapper(arrow::Result<std::shared_ptr<arrow::Buffer>> res, ResponseStatus status = ResponseStatus::ARROW_BUFFER) : arrow_buffer(res), status(status) {
+
+	}
+	DuckDBWasmResultsWrapper(arrow::Status res, ResponseStatus status = ResponseStatus::ARROW_BUFFER) : arrow_buffer(res), status(status) {
+	}
+	arrow::Result<std::shared_ptr<arrow::Buffer>> arrow_buffer;
+	ResponseStatus status;
+};
+
 class WebDB {
    public:
     /// A connection
@@ -93,7 +106,7 @@ class WebDB {
         /// Cancel a pending query
         bool CancelPendingQuery();
         /// Fetch a data chunk from a pending query
-        arrow::Result<std::shared_ptr<arrow::Buffer>> FetchQueryResults();
+        DuckDBWasmResultsWrapper FetchQueryResults();
         /// Get table names
         arrow::Result<std::string> GetTableNames(std::string_view text);
 
