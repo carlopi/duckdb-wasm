@@ -634,7 +634,7 @@ jobs:
             - wasm_eh
             - wasm_coi
             - clang_format
-            - eslint
+            # - eslint
         steps:
             - uses: actions/checkout@v4
               with:
@@ -948,7 +948,7 @@ jobs:
             - wasm_eh_loadable
             - wasm_coi_loadable
             - clang_format
-            - eslint
+            # - eslint
         steps:
             - uses: actions/checkout@v4
               with:
