@@ -17,5 +17,8 @@
     },
     "devDependencies": {
         "badge-maker": "^5.0.0"
+    },
+    "dependencies": {
+        "esbuild": "^0.25.5"
     }
 }
